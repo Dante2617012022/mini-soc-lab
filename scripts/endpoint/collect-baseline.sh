@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 umask 077
+PATH="${PATH}:/usr/sbin:/sbin"
 
 usage() {
   cat <<'EOF'
@@ -97,7 +98,9 @@ have_cmd() {
   section "LOCAL INTERACTIVE USERS"
   awk -F: '$3 >= 1000 && $7 !~ /(nologin|false)$/ {print $1, $3, $6, $7}' /etc/passwd || true
 
+  run_optional "CURRENT USER AND GROUPS" id
   run_optional "SUDO GROUP" getent group sudo
+  run_optional "DOCKER GROUP" getent group docker
 
   section "FIREWALL RULESET"
   if have_cmd nft; then
@@ -108,7 +111,7 @@ have_cmd() {
       echo "NOTE: full nftables ruleset may require root privileges."
     fi
   else
-    echo "nft command not installed"
+    echo "nft command not available in PATH"
   fi
 
   section "SECURITY-RELEVANT PACKAGES"
