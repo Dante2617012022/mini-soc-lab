@@ -69,9 +69,9 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 0 — bootstrap y baseline.**
+**Fase 1 — provisioning de SOC-ENDPOINT-01.**
 
-El primer cambio incorpora gobierno del laboratorio, tratamiento de evidencia, validaciones de CI y un colector de baseline de solo lectura para `SOC-ENDPOINT-01`.
+El bootstrap y baseline inicial ya fueron validados. El siguiente cambio provisiona una VM Debian 13 dedicada como `SOC-ENDPOINT-01`, separada del entorno generalista existente.
 
 ## Seguridad y uso autorizado
 
