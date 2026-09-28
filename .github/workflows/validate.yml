@@ -55,6 +55,7 @@ jobs:
           bash scripts/endpoint/apply-base-hardening.sh --help >/dev/null
           bash scripts/endpoint/collect-telemetry-sample.sh --help >/dev/null
           bash scripts/endpoint/check-wazuh-agent-readiness.sh --help >/dev/null
+          bash scripts/management/collect-baseline.sh --help >/dev/null
 
       - name: Validate endpoint SSH hardening
         run: |
