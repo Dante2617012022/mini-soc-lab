@@ -69,9 +69,9 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 2 — hardening base y logging de SOC-ENDPOINT-01.**
+**Fase 3 — validación de telemetría de SOC-ENDPOINT-01.**
 
-El provisioning de `SOC-ENDPOINT-01` fue validado y cerrado mediante CHG-002. CHG-003 establece hardening mínimo de SSH y persistencia acotada de logs antes de desplegar el Wazuh Agent.
+CHG-002 y CHG-003 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con logging persistente. CHG-004 valida que los eventos de autenticación y privilegios necesarios para los primeros casos de uso existen antes de desplegar el Wazuh Agent.
 
 ## Seguridad y uso autorizado
 
