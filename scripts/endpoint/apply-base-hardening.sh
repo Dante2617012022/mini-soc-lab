@@ -49,13 +49,19 @@ for file in "$ssh_source" "$journal_source"; do
 done
 
 command -v sshd >/dev/null 2>&1 || { echo "ERROR: sshd not found" >&2; exit 1; }
+command -v ssh-keygen >/dev/null 2>&1 || { echo "ERROR: ssh-keygen not found" >&2; exit 1; }
 command -v systemctl >/dev/null 2>&1 || { echo "ERROR: systemctl not found" >&2; exit 1; }
 
-tmp_config="$(mktemp)"
-trap 'rm -f "$tmp_config"' EXIT
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+tmp_config="${tmp_dir}/sshd_config"
+tmp_host_key="${tmp_dir}/ssh_host_ed25519_key"
+
+ssh-keygen -q -t ed25519 -N '' -f "$tmp_host_key"
 
 cat >"$tmp_config" <<EOF
-UsePAM yes
+HostKey $tmp_host_key
+UsePAM no
 Include $ssh_source
 EOF
 
