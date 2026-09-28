@@ -102,8 +102,19 @@ Before Wazuh is installed:
 6. verify the intended administrative access path;
 7. confirm no GUI or unrelated services were installed;
 8. clone the controlled Mini-SOC repository if Git is approved for the management VM;
-9. collect a local baseline and SHA-256 using a management-specific collector added during this change if required;
-10. create a VirtualBox snapshot named `BASELINE-MGMT-READY`.
+9. collect a private local baseline and SHA-256 with `scripts/management/collect-baseline.sh`;
+10. validate the generated SHA-256;
+11. create a VirtualBox snapshot named `BASELINE-MGMT-READY`.
+
+The management baseline can be collected with:
+
+```bash
+sudo bash scripts/management/collect-baseline.sh
+```
+
+Running as root allows the report to include process details for listeners and full firewall state. The report remains local/private under `/root/soc-evidence/baseline` by default and must not be committed.
+
+Validate the generated sidecar with `sha256sum -c` before the snapshot.
 
 The snapshot must be taken before the Wazuh installation change.
 
