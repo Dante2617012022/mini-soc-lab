@@ -69,9 +69,9 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 1 — provisioning de SOC-ENDPOINT-01.**
+**Fase 2 — hardening base y logging de SOC-ENDPOINT-01.**
 
-El bootstrap y baseline inicial ya fueron validados. El siguiente cambio provisiona una VM Debian 13 dedicada como `SOC-ENDPOINT-01`, separada del entorno generalista existente.
+El provisioning de `SOC-ENDPOINT-01` fue validado y cerrado mediante CHG-002. CHG-003 establece hardening mínimo de SSH y persistencia acotada de logs antes de desplegar el Wazuh Agent.
 
 ## Seguridad y uso autorizado
 

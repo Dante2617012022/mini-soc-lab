@@ -18,10 +18,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install ShellCheck
+      - name: Install validation dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends shellcheck
+          sudo apt-get install -y --no-install-recommends shellcheck openssh-server
 
       - name: Validate Bash syntax
         run: |
@@ -31,9 +31,25 @@ jobs:
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck
 
-      - name: Validate baseline CLI
+      - name: Validate script CLIs
         run: |
           bash scripts/endpoint/collect-baseline.sh --help >/dev/null
+          bash scripts/endpoint/apply-base-hardening.sh --help >/dev/null
+
+      - name: Validate endpoint SSH hardening
+        run: |
+          bash scripts/endpoint/apply-base-hardening.sh --check
+          grep -Fxq 'PermitRootLogin no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'PasswordAuthentication yes' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'MaxAuthTries 3' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'X11Forwarding no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'AllowAgentForwarding no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'AllowTcpForwarding no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+
+      - name: Validate journald policy
+        run: |
+          grep -Fxq 'Storage=persistent' config/endpoint/journald.conf.d/60-mini-soc.conf
+          grep -Fxq 'SystemMaxUse=256M' config/endpoint/journald.conf.d/60-mini-soc.conf
 
       - name: Reject private-key material
         shell: bash
