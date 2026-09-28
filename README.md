@@ -69,9 +69,9 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 3 — validación de telemetría de SOC-ENDPOINT-01.**
+**Fase 4 — preparación del plano de gestión y del despliegue Wazuh.**
 
-CHG-002 y CHG-003 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con logging persistente. CHG-004 valida que los eventos de autenticación y privilegios necesarios para los primeros casos de uso existen antes de desplegar el Wazuh Agent.
+CHG-002 a CHG-004 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con telemetría real validada. CHG-005 provisionará `SOC-MGMT-01`; mientras ese segundo host no está disponible, CHG-006 valida de forma read-only que el endpoint siga listo para un despliegue controlado del Wazuh Agent sin instalarlo prematuramente.
 
 ## Seguridad y uso autorizado
 
