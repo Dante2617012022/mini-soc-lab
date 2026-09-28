@@ -18,7 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install ShellCheck
+      - name: Install validation dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends shellcheck openssh-server
@@ -39,78 +39,17 @@ jobs:
       - name: Validate endpoint SSH hardening
         run: |
           bash scripts/endpoint/apply-base-hardening.sh --check
-          test "$(grep -Ec '^PermitRootLogin no
-      - name: Reject private-key material
-        shell: bash
-        run: |
-          if git grep -I -n -E -- '-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'; then
-            echo "Private-key material detected in tracked files." >&2
-            exit 1
-          fi
+          grep -Fxq 'PermitRootLogin no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'PasswordAuthentication yes' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'MaxAuthTries 3' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'X11Forwarding no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'AllowAgentForwarding no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
+          grep -Fxq 'AllowTcpForwarding no' config/endpoint/sshd_config.d/60-mini-soc-hardening.conf
 
-      - name: Reject raw evidence formats
-        shell: bash
+      - name: Validate journald policy
         run: |
-          tracked="$(git ls-files)"
-          if grep -E '(^|/)(evidence/(private|raw)/|.*\.(pcap|pcapng|cap|log)$)' <<<"$tracked"; then
-            echo "Raw/private evidence must not be tracked." >&2
-            exit 1
-          fi
- config/endpoint/sshd_config.d/60-mini-soc-hardening.conf)" -eq 1
-          test "$(grep -Ec '^PasswordAuthentication yes
-      - name: Reject private-key material
-        shell: bash
-        run: |
-          if git grep -I -n -E -- '-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'; then
-            echo "Private-key material detected in tracked files." >&2
-            exit 1
-          fi
-
-      - name: Reject raw evidence formats
-        shell: bash
-        run: |
-          tracked="$(git ls-files)"
-          if grep -E '(^|/)(evidence/(private|raw)/|.*\.(pcap|pcapng|cap|log)$)' <<<"$tracked"; then
-            echo "Raw/private evidence must not be tracked." >&2
-            exit 1
-          fi
- config/endpoint/sshd_config.d/60-mini-soc-hardening.conf)" -eq 1
-          test "$(grep -Ec '^MaxAuthTries 3
-      - name: Reject private-key material
-        shell: bash
-        run: |
-          if git grep -I -n -E -- '-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'; then
-            echo "Private-key material detected in tracked files." >&2
-            exit 1
-          fi
-
-      - name: Reject raw evidence formats
-        shell: bash
-        run: |
-          tracked="$(git ls-files)"
-          if grep -E '(^|/)(evidence/(private|raw)/|.*\.(pcap|pcapng|cap|log)$)' <<<"$tracked"; then
-            echo "Raw/private evidence must not be tracked." >&2
-            exit 1
-          fi
- config/endpoint/sshd_config.d/60-mini-soc-hardening.conf)" -eq 1
-          test "$(grep -Ec '^X11Forwarding no
-      - name: Reject private-key material
-        shell: bash
-        run: |
-          if git grep -I -n -E -- '-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'; then
-            echo "Private-key material detected in tracked files." >&2
-            exit 1
-          fi
-
-      - name: Reject raw evidence formats
-        shell: bash
-        run: |
-          tracked="$(git ls-files)"
-          if grep -E '(^|/)(evidence/(private|raw)/|.*\.(pcap|pcapng|cap|log)$)' <<<"$tracked"; then
-            echo "Raw/private evidence must not be tracked." >&2
-            exit 1
-          fi
- config/endpoint/sshd_config.d/60-mini-soc-hardening.conf)" -eq 1
+          grep -Fxq 'Storage=persistent' config/endpoint/journald.conf.d/60-mini-soc.conf
+          grep -Fxq 'SystemMaxUse=256M' config/endpoint/journald.conf.d/60-mini-soc.conf
 
       - name: Reject private-key material
         shell: bash
