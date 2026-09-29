@@ -85,14 +85,7 @@ jobs:
         shell: bash
         run: |
           tracked="$(git ls-files)"
-          if grep -E '(^|/)(wazuh-install-files\.tar|wazuh-passwords\.txt)        shell: bash
-        run: |
-          tracked="$(git ls-files)"
-          if grep -E '(^|/)(evidence/(private|raw)/|.*\.(pcap|pcapng|cap|log)$)' <<<"$tracked"; then
-            echo "Raw/private evidence must not be tracked." >&2
-            exit 1
-          fi
- <<<"$tracked"; then
+          if grep -E '(^|/)(wazuh-install-files\.tar|wazuh-passwords\.txt)$' <<<"$tracked"; then
             echo "Generated Wazuh credential material must not be tracked." >&2
             exit 1
           fi
