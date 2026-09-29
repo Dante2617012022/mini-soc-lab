@@ -8,6 +8,8 @@ id_rsa
 id_rsa.*
 id_ed25519
 id_ed25519.*
+wazuh-install-files.tar
+wazuh-passwords.txt
 
 # Raw/private evidence
 evidence/private/

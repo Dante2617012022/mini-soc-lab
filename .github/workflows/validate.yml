@@ -56,6 +56,7 @@ jobs:
           bash scripts/endpoint/collect-telemetry-sample.sh --help >/dev/null
           bash scripts/endpoint/check-wazuh-agent-readiness.sh --help >/dev/null
           bash scripts/management/collect-baseline.sh --help >/dev/null
+          bash scripts/management/check-wazuh-central-preflight.sh --help >/dev/null
 
       - name: Validate endpoint SSH hardening
         run: |
@@ -77,6 +78,15 @@ jobs:
         run: |
           if git grep -I -n -E -- '-----BEGIN (RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----'; then
             echo "Private-key material detected in tracked files." >&2
+            exit 1
+          fi
+
+      - name: Reject Wazuh generated credentials
+        shell: bash
+        run: |
+          tracked="$(git ls-files)"
+          if grep -E '(^|/)(wazuh-install-files\.tar|wazuh-passwords\.txt)$' <<<"$tracked"; then
+            echo "Generated Wazuh credential material must not be tracked." >&2
             exit 1
           fi
 

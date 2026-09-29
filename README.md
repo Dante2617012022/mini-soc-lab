@@ -69,9 +69,13 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 4 — preparación del plano de gestión y del despliegue Wazuh.**
+**Fase 5 — Wazuh central operativo; integración del endpoint pendiente.**
 
-CHG-002 a CHG-004 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con telemetría real validada. CHG-005 provisionará `SOC-MGMT-01`; mientras ese segundo host no está disponible, CHG-006 valida de forma read-only que el endpoint siga listo para un despliegue controlado del Wazuh Agent sin instalarlo prematuramente.
+CHG-002 a CHG-004 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con telemetría real validada. CHG-005 provisionó `SOC-MGMT-01` sobre Ubuntu Server 24.04 LTS y estableció un baseline verificable con rollback. CHG-006 confirmó de forma read-only que el endpoint sigue listo para un despliegue controlado del Wazuh Agent.
+
+CHG-007 instaló y validó Wazuh 4.14.8 en modo all-in-one sobre `SOC-MGMT-01`, con manager, indexer, dashboard y Filebeat operativos. El acceso de UAT al dashboard se realizó mediante un forward temporal restringido a loopback, luego retirado; la credencial inicial de administración fue rotada, el repositorio Wazuh quedó deshabilitado para evitar upgrades accidentales y se creó el snapshot `WAZUH-CENTRAL-READY`.
+
+El próximo cambio conectará `SOC-ENDPOINT-01` con el manager y validará el primer flujo end-to-end de telemetría y detección. La conectividad entre hosts físicos se diseñará explícitamente antes de exponer servicios del manager.
 
 ## Seguridad y uso autorizado
 
