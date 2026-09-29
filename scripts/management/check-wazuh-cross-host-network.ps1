@@ -66,7 +66,7 @@ if ($Role -eq 'ManagerHost') {
 
 if ($ManagerAddress) {
     Write-Host ''
-    Write-Host "Reachability to manager address $ManagerAddress:"
+    Write-Host "Reachability to manager address ${ManagerAddress}:"
     $reachability = foreach ($port in 1514, 1515) {
         $result = Test-NetConnection -ComputerName $ManagerAddress -Port $port -WarningAction SilentlyContinue
         [pscustomobject]@{
