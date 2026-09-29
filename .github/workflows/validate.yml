@@ -27,6 +27,24 @@ jobs:
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -r -n1 bash -n
 
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          Get-ChildItem scripts -Recurse -Filter '*.ps1' | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName,
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error $_.Message }
+              exit 1
+            }
+          }
+
       - name: Run ShellCheck
         run: |
           find scripts -type f -name '*.sh' -print0 | xargs -0 -r shellcheck
@@ -37,6 +55,7 @@ jobs:
           bash scripts/endpoint/apply-base-hardening.sh --help >/dev/null
           bash scripts/endpoint/collect-telemetry-sample.sh --help >/dev/null
           bash scripts/endpoint/check-wazuh-agent-readiness.sh --help >/dev/null
+          bash scripts/management/collect-baseline.sh --help >/dev/null
 
       - name: Validate endpoint SSH hardening
         run: |
