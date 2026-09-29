@@ -54,25 +54,27 @@ Get-NetFirewallProfile |
 if ($Role -eq 'ManagerHost') {
     Write-Host ''
     Write-Host 'Host listener conflicts for Wazuh-related ports:'
-    foreach ($port in 1514, 1515, 443, 55000, 9200) {
+    $listenerState = foreach ($port in 1514, 1515, 443, 55000, 9200) {
         $listener = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue
         [pscustomobject]@{
             Port      = $port
             Listening = [bool]$listener
         }
-    } | Format-Table -AutoSize
+    }
+    $listenerState | Format-Table -AutoSize
 }
 
 if ($ManagerAddress) {
     Write-Host ''
     Write-Host "Reachability to manager address $ManagerAddress:"
-    foreach ($port in 1514, 1515) {
+    $reachability = foreach ($port in 1514, 1515) {
         $result = Test-NetConnection -ComputerName $ManagerAddress -Port $port -WarningAction SilentlyContinue
         [pscustomobject]@{
             Port             = $port
             TcpTestSucceeded = $result.TcpTestSucceeded
         }
-    } | Format-Table -AutoSize
+    }
+    $reachability | Format-Table -AutoSize
 }
 
 Write-Host ''
