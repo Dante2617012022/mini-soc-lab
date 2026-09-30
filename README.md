@@ -69,7 +69,7 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 7 — Wazuh FIM realtime y segunda detección end-to-end validadas.**
+**Fase 8 — Tercera detección end-to-end y triage de privilegios validados.**
 
 CHG-002 a CHG-004 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con telemetría real validada. CHG-005 provisionó `SOC-MGMT-01` sobre Ubuntu Server 24.04 LTS y estableció un baseline verificable con rollback. CHG-006 confirmó de forma read-only que el endpoint estaba listo para un despliegue controlado del Wazuh Agent.
 
@@ -82,6 +82,8 @@ CHG-009 formaliza el despliegue de Wazuh Agent 4.14.8-1 en `SOC-ENDPOINT-01`, su
 CHG-010 formaliza `SOC-DET-002`: una modificación controlada en un directorio dedicado de laboratorio detectada por Wazuh FIM en modo realtime mediante Rule 550 (level 7). La alerta registró cambio de mtime y hashes MD5/SHA-1/SHA-256, con mapeo MITRE ATT&CK T1565.001 Stored Data Manipulation y disposición analítica `True Positive — Authorized Security Test / Benign`.
 
 Durante la validación se detectó además una interrupción real del camino de telemetría causada por bindings bridged de VirtualBox que ya no coincidían con los adaptadores físicos activos de los hosts. El problema se aisló antes de tocar identidad o claves Wazuh, se restauró conectividad L3/TCP/1514 y el agente recuperó su sesión existente. La prueba FIM aceptada se repitió únicamente después de recuperar el canal.
+
+CHG-011 formaliza `SOC-DET-003`: una elevación autorizada mediante `su -` desde `socops` hacia `root`, observada como Rule 5501 (PAM session opened) y Rule 5502 (session closed). El caso conserva la diferencia entre actividad privilegiada real, contexto MITRE ATT&CK T1078 Valid Accounts / Privilege Escalation y la conclusión analítica `True Positive — Authorized Administrative Activity / Benign`.
 
 El próximo incremento debe seleccionarse por riesgo y valor de evidencia. Los hallazgos SCA/CIS se tratarán como un workstream de hardening separado; Suricata, YARA y Active Response permanecen fuera de esta fase.
 
