@@ -69,13 +69,15 @@ objetivo → evaluación de riesgo → cambio mínimo → CI → UAT en VM → e
 
 ## Estado
 
-**Fase 5 — Wazuh central operativo; integración del endpoint pendiente.**
+**Fase 5 — Wazuh central operativo y conectividad cross-host validada.**
 
-CHG-002 a CHG-004 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con telemetría real validada. CHG-005 provisionó `SOC-MGMT-01` sobre Ubuntu Server 24.04 LTS y estableció un baseline verificable con rollback. CHG-006 confirmó de forma read-only que el endpoint sigue listo para un despliegue controlado del Wazuh Agent.
+CHG-002 a CHG-004 dejaron `SOC-ENDPOINT-01` provisionado, endurecido y con telemetría real validada. CHG-005 provisionó `SOC-MGMT-01` sobre Ubuntu Server 24.04 LTS y estableció un baseline verificable con rollback. CHG-006 confirmó de forma read-only que el endpoint estaba listo para un despliegue controlado del Wazuh Agent.
 
 CHG-007 instaló y validó Wazuh 4.14.8 en modo all-in-one sobre `SOC-MGMT-01`, con manager, indexer, dashboard y Filebeat operativos. El acceso de UAT al dashboard se realizó mediante un forward temporal restringido a loopback, luego retirado; la credencial inicial de administración fue rotada, el repositorio Wazuh quedó deshabilitado para evitar upgrades accidentales y se creó el snapshot `WAZUH-CENTRAL-READY`.
 
-El próximo cambio conectará `SOC-ENDPOINT-01` con el manager y validará el primer flujo end-to-end de telemetría y detección. La conectividad entre hosts físicos se diseñará explícitamente antes de exponer servicios del manager.
+CHG-008 validó el camino cross-host real mediante una segunda NIC bridged en cada VM. NAT continúa siendo la ruta por defecto y la interfaz bridged queda dedicada al tráfico del laboratorio. TCP/1514 y TCP/1515 fueron validados end-to-end sin crear forwards Wazuh ni reglas adicionales en los hosts Windows.
+
+El runtime del laboratorio ya avanzó a instalación/enrollment del agente y a una primera detección controlada. Esa evidencia se formalizará en un cambio separado para mantener trazabilidad y evitar mezclar conectividad, despliegue del agente y detection engineering en un único PR.
 
 ## Seguridad y uso autorizado
 
