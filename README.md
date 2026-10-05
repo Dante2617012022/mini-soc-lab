@@ -93,7 +93,7 @@ CHG-020 añadió YARA y enriquecimiento hash-only con VirusTotal. Un HTTP 404 se
 
 CHG-021 cerró el ciclo detection-to-response. Una regla Wazuh específica para la firma controlada activa en `SOC-GW-01` un script stateful que sólo acepta `10.77.0.10`, crea una tabla nftables runtime dedicada y bloquea temporalmente el forwarding. El UAT automático registró `ADD`, pérdida de conectividad esperada, `DELETE` por timeout de 60 segundos y recuperación completa, con Wazuh Agent, Suricata, nftables e IP forwarding saludables al finalizar.
 
-La documentación detallada de cada cambio vive en `docs/CHG-*.md`. Los siguientes incrementos deben centrarse en coherencia final de portfolio, arquitectura/evidencia y hardening priorizado por riesgo, no en agregar herramientas por cantidad.
+La documentación detallada de cada cambio vive en `docs/CHG-*.md` y la arquitectura implementada en `docs/ARCHITECTURE.md`. La v1 queda cerrada funcionalmente; mejoras posteriores deben responder a riesgo o a una necesidad de operación demostrable, no a agregar herramientas por cantidad.
 
 ## Riesgos residuales conocidos
 
