@@ -37,6 +37,10 @@ Servicio externo
 
 `SOC-GW-01` y `SOC-TEST-01` usan una red interna aislada de VirtualBox. El gateway conserva una interfaz NAT para salida y enruta sólo el segmento de prueba autorizado. El manager y los agentes usan conectividad bridged dedicada para telemetría Wazuh, mientras NAT continúa como ruta por defecto donde corresponde.
 
+## Diagrama y trust boundaries
+
+La arquitectura implementada, sus flujos de confianza y el recorrido detection-to-response están documentados en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 ## Principios de diseño
 
 - Hosts físicos principalmente como hipervisores; los roles de seguridad viven en VMs.
