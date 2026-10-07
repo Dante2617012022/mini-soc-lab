@@ -62,6 +62,7 @@ La arquitectura implementada, sus flujos de confianza y el recorrido detection-t
 | SOC-DET-001 | Fallo SSH detectado por Wazuh; triage y ATT&CK documentados |
 | SOC-DET-002 | FIM realtime sobre harness controlado; hashes antes/después |
 | SOC-DET-003 | Sesión privilegiada autorizada observada y contextualizada |
+| SOC-DET-004 | Anomalía de tasa UDP acotada; prueba positiva/negativa, EVE JSON → Wazuh y separación de Active Response |
 | Network detection | Suricata SID local controlado → EVE JSON → Wazuh → Dashboard |
 | File detection | YARA local sobre artefacto benigno determinístico |
 | Threat enrichment | SHA-256 consultado en VirusTotal con secreto efímero y degradación segura |
@@ -92,6 +93,8 @@ CHG-017 instaló y validó Suricata 7 sobre el gateway, incluyendo ET Open y la 
 CHG-020 añadió YARA y enriquecimiento hash-only con VirusTotal. Un HTTP 404 se trató correctamente como hash no indexado/desconocido, no como evidencia de archivo limpio; la clave API se manejó de forma efímera y YARA continuó funcionando sin el servicio externo.
 
 CHG-021 cerró el ciclo detection-to-response. Una regla Wazuh específica para la firma controlada activa en `SOC-GW-01` un script stateful que sólo acepta `10.77.0.10`, crea una tabla nftables runtime dedicada y bloquea temporalmente el forwarding. El UAT automático registró `ADD`, pérdida de conectividad esperada, `DELETE` por timeout de 60 segundos y recuperación completa, con Wazuh Agent, Suricata, nftables e IP forwarding saludables al finalizar.
+
+CHG-025 añadió SOC-DET-004 como detección independiente de anomalía de tasa UDP. Una revisión previa al UAT descartó el primer diseño ICMP porque habría colisionado con el trigger de Active Response de CHG-021. La versión final usa UDP/65000, validó casos negativo y positivo con tráfico estrictamente acotado, llegó a Wazuh Threat Hunting mediante EVE JSON y no produjo contención ni alteró SID `1000001`.
 
 La documentación detallada de cada cambio vive en `docs/CHG-*.md` y la arquitectura implementada en `docs/ARCHITECTURE.md`. La v1 queda cerrada funcionalmente; mejoras posteriores deben responder a riesgo o a una necesidad de operación demostrable, no a agregar herramientas por cantidad.
 
