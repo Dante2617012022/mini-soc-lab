@@ -82,7 +82,8 @@ jobs:
 
           grep -Fq 'sid:1000001;' "$rules"
           grep -Fq 'sid:1000002;' "$rules"
-          grep -Fq 'threshold:type both, track by_src, count 20, seconds 1;' "$rules"
+          grep -Fq 'alert udp 10.77.0.10 any -> 10.77.0.1 65000' "$rules"
+          grep -Fq 'threshold:type threshold, track by_src, count 20, seconds 1;' "$rules"
 
           if grep -Eq '^[[:space:]]*(drop|reject)[[:space:]]' "$rules"; then
             echo "CHG-025 local signatures must remain detection-only." >&2
