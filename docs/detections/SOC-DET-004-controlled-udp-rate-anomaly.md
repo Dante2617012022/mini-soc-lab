@@ -2,15 +2,17 @@
 
 ## Status
 
-**Pre-UAT.** The rule is CI-validated but is not operationally validated until CHG-025 UAT completes.
+**Operationally validated in the controlled lab on 2026-10-07.**
+
+CHG-025 remains detection-only. No automatic response is authorized for this detection.
 
 ## Detection objective
 
-Identify a short burst of UDP packets from the authorized disposable workload `SOC-TEST-01` to a dedicated unused UDP port on the Mini-SOC gateway at a rate above the lab baseline.
+Identify a short, authorized UDP rate anomaly from the disposable workload `SOC-TEST-01` to a dedicated unused port on the Mini-SOC gateway.
 
 ## Data path
 
-`SOC-TEST-01 (10.77.0.10) -> SOC-GW-01 (10.77.0.1:65000/UDP) -> Suricata -> EVE JSON -> Wazuh -> Dashboard`
+`SOC-TEST-01 (10.77.0.10) -> SOC-GW-01 (10.77.0.1:65000/UDP) -> Suricata -> EVE JSON -> Wazuh Agent -> Wazuh Manager/Indexer -> Dashboard`
 
 ## Signature
 
@@ -29,42 +31,67 @@ Canonical rule source:
 
 ## Design isolation
 
-The dedicated UDP test path avoids matching existing ICMP SID `1000001`. That preserves CHG-021's independently governed Active Response path and keeps CHG-025 detection-only.
+The first draft used ICMP Echo Request traffic. Pre-UAT review identified that the same traffic would also match existing SID `1000001`, the intentional trigger for CHG-021 Active Response.
 
-## Positive condition
+The final detection therefore uses a dedicated UDP test path. This preserves the semantic integrity of SID `1000001`, avoids Wazuh rule `100021`, and keeps CHG-025 detection-only.
 
-```bash
-sudo hping3 --udp -p 65000 -c 30 -i u20000 10.77.0.1
-```
+## Validated UAT
 
-## Negative condition
+Negative baseline:
 
-```bash
-sudo hping3 --udp -p 65000 -c 5 -i u1000000 10.77.0.1
-```
+- five low-rate UDP packets were transmitted;
+- no SID `1000002` event appeared;
+- no new SID `1000001` event appeared;
+- no new Active Response occurred;
+- the runtime blocking set remained empty.
 
-The negative test must not produce SID `1000002`.
+Positive case:
 
-## Expected triage
+- exactly thirty bounded UDP packets were transmitted;
+- Suricata emitted SID `1000002`;
+- the event matched `10.77.0.10 -> 10.77.0.1:65000/UDP`;
+- action remained `allowed`;
+- no new SID `1000001` appeared;
+- no Active Response was triggered.
+
+Both cases passed. Exact reproducible test commands and runtime validation are recorded in `docs/CHG-025.md`.
+
+## Wazuh visibility
+
+Threat Hunting confirmed the event on agent `SOC-GW-01` from `/var/log/suricata/eve.json`.
+
+Wazuh exposed:
+
+- `data.alert.signature_id = 1000002`;
+- `data.alert.signature = MINI-SOC Controlled UDP Rate Anomaly`;
+- protocol UDP;
+- destination port `65000`;
+- native Suricata rule `86601`;
+- level `3`.
+
+## Analyst disposition
 
 **True Positive — Authorized Security Test / Benign**
 
-The alert confirms that the defined rate condition occurred. It does not prove malicious intent or denial-of-service impact.
+The defined rate condition occurred and was correctly detected. The event does not by itself establish hostile intent or service impact.
 
-## Response
+- escalation: no;
+- containment: no;
+- automated response: no;
+- ATT&CK: no mapping assigned without adversary context.
 
-No automated response is authorized in CHG-025. Existing CHG-021 containment remains scoped to SID `1000001` through Wazuh rule `100021`.
+## Response boundary
 
-## ATT&CK
+Existing CHG-021 containment remains independently scoped to SID `1000001` through Wazuh rule `100021`.
 
-No ATT&CK technique is assigned solely for portfolio appearance.
+CHG-025 does not modify nftables policy, Wazuh manager rules or Active Response configuration.
 
 ## False-positive considerations
 
-The threshold is lab-specific. Production adoption would require workload baselining, alert-volume testing, service context and availability requirements.
+The threshold is lab-specific. Production adoption would require workload baselining, service context, threshold tuning, alert-volume testing and availability requirements.
 
-## Evidence requirements
+## Evidence and privacy
 
-After UAT, retain sanitized evidence of the negative test, positive SID `1000002` event, Wazuh visibility, analyst disposition and service-health regression checks.
+The repository records sanitized validation facts only. Raw PCAP, full EVE logs, credentials, private telemetry and unrelated network data are not published.
 
-Do not publish raw PCAP, credentials, private telemetry or unrelated network data.
+See `docs/CHG-025.md` for the complete change record, rollback and operational observations.
