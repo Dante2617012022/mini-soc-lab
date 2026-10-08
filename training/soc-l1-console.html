@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Mini-SOC · Consola de entrenamiento SOC L1</title>
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#08111f;--panel:#0f1b2d;--panel2:#14243a;--text:#e8eef8;--muted:#a6b3c7;
+      --line:#253854;--blue:#5ab0ff;--cyan:#4dd6c8;--yellow:#f2c94c;--red:#ff7a90;--green:#65d38e;
+      --shadow:0 18px 48px rgba(0,0,0,.28)
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:
+      radial-gradient(circle at top right,rgba(90,176,255,.12),transparent 30%),
+      radial-gradient(circle at top left,rgba(77,214,200,.08),transparent 22%),var(--bg);color:var(--text)}
+    a{color:var(--blue)}
+    button{font:inherit}
+    .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 70px}
+    header{display:grid;gap:14px;margin-bottom:24px}
+    .eyebrow{font-size:.82rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
+    h1{font-size:clamp(2rem,4vw,3.5rem);line-height:1.02;margin:0;max-width:850px}
+    .lead{color:var(--muted);max-width:880px;line-height:1.65;margin:0}
+    .notice{border:1px solid #3f5d78;background:rgba(23,46,70,.72);padding:14px 16px;border-radius:14px;color:#d9e7f7}
+    .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:22px 0}
+    .pill,.filter{border:1px solid var(--line);background:#0d1929;color:var(--text);border-radius:999px;padding:9px 13px}
+    .filter{cursor:pointer}
+    .filter[aria-pressed="true"]{border-color:var(--blue);box-shadow:0 0 0 2px rgba(90,176,255,.13) inset}
+    .mode{margin-left:auto;background:#14243a;border:1px solid #385273;color:white;border-radius:12px;padding:10px 14px;cursor:pointer}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+    .card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(20,36,58,.96),rgba(11,22,37,.97));border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:20px 20px 15px}
+    .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+    .badge{font-size:.76rem;font-weight:800;border:1px solid var(--line);border-radius:999px;padding:5px 9px;color:#dce8f6}
+    .b1{background:rgba(101,211,142,.12);border-color:rgba(101,211,142,.35)}
+    .b2{background:rgba(242,201,76,.12);border-color:rgba(242,201,76,.35)}
+    .b3{background:rgba(255,122,144,.12);border-color:rgba(255,122,144,.35)}
+    .card h2{font-size:1.25rem;margin:0 0 8px}
+    .card p{color:var(--muted);line-height:1.55;margin:0}
+    .flow{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem;color:#c8d8ed;background:#091421;border:1px solid #20334d;border-radius:12px;padding:11px 12px;margin-top:14px;overflow:auto}
+    details{border-top:1px solid var(--line)}
+    summary{cursor:pointer;padding:15px 20px;font-weight:800;list-style:none;display:flex;justify-content:space-between;gap:12px}
+    summary::-webkit-details-marker{display:none}
+    summary::after{content:"+";color:var(--blue);font-size:1.2rem}
+    details[open] summary::after{content:"–"}
+    .section{padding:0 20px 20px}
+    .section h3{font-size:.95rem;margin:18px 0 9px;color:#dce9f8}
+    ol,ul{padding-left:22px;color:#d8e2ef;line-height:1.55}
+    li+li{margin-top:7px}
+    pre{margin:9px 0;background:#07101b;border:1px solid #233852;border-radius:12px;padding:12px;overflow:auto;color:#dceafa}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .copy{border:1px solid #36506d;background:#112338;color:#eaf4ff;border-radius:9px;padding:7px 9px;cursor:pointer;margin-top:4px}
+    .expected{border-left:3px solid var(--blue);padding-left:12px}
+    .decision{border-left:3px solid var(--green);padding-left:12px}
+    .warning{border-left:3px solid var(--yellow);padding-left:12px}
+    .danger{border-left:3px solid var(--red);padding-left:12px}
+    .solution-hidden .solution{filter:blur(7px);user-select:none;pointer-events:none;opacity:.55}
+    .solution-hidden .solution::selection{background:transparent}
+    .footer-note{margin-top:28px;color:var(--muted);font-size:.9rem;line-height:1.55}
+    .hidden-card{display:none}
+    @media(max-width:720px){.mode{margin-left:0;width:100%}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="eyebrow">Mini-SOC · entrenamiento operativo</div>
+      <h1>Consola de práctica SOC L1</h1>
+      <p class="lead">Casos basados únicamente en controles y detecciones ya validados del laboratorio. Cada card separa generación del evento, alerta esperada, triage, evidencia, decisión y cierre para practicar como si estuvieras atendiendo una cola SOC.</p>
+      <div class="notice"><strong>Uso autorizado:</strong> ejecutá estos tests sólo dentro de tu Mini-SOC. La interfaz no ejecuta comandos, no contiene credenciales y no modifica Wazuh, Suricata, nftables ni las VMs.</div>
+    </header>
+
+    <div class="toolbar">
+      <button class="filter" data-level="all" aria-pressed="true">Todos</button>
+      <button class="filter" data-level="1" aria-pressed="false">Nivel 1</button>
+      <button class="filter" data-level="2" aria-pressed="false">Nivel 2</button>
+      <button class="filter" data-level="3" aria-pressed="false">Nivel 3</button>
+      <button id="mode" class="mode">Modo simulación: ocultar solución</button>
+    </div>
+
+    <section class="grid" id="cases">
+
+      <article class="card" data-level="1">
+        <div class="card-head">
+          <div class="meta"><span class="badge b1">Nivel 1</span><span class="badge">TEST-001</span><span class="badge">Endpoint</span></div>
+          <h2>Fallo de autenticación SSH</h2>
+          <p>Entrená triage de un único fallo de autenticación sin confundirlo con brute force o compromiso.</p>
+          <div class="flow">sshd → journald → Wazuh Agent → Manager → Rule 5760 → Threat Hunting</div>
+        </div>
+        <details open>
+          <summary>1. Generar el evento</summary>
+          <div class="section">
+            <h3>PC principal · Windows PowerShell</h3>
+            <ol>
+              <li>Confirmá primero que <code>SOC-ENDPOINT-01</code> aparece <strong>Active</strong> en Wazuh.</li>
+              <li>Ejecutá una conexión SSH al port-forward local:</li>
+            </ol>
+            <pre><code>ssh -p 2222 socops@127.0.0.1</code></pre>
+            <button class="copy" data-copy="ssh -p 2222 socops@127.0.0.1">Copiar comando</button>
+            <ol start="3">
+              <li>Ingresá <strong>una sola contraseña incorrecta</strong>.</li>
+              <li>Cancelá con <code>Ctrl+C</code>. No hagas múltiples intentos.</li>
+            </ol>
+          </div>
+        </details>
+        <details>
+          <summary>2. Qué deberías ver</summary>
+          <div class="section solution expected">
+            <ul>
+              <li>Wazuh Rule <code>5760</code>, level <code>5</code>.</li>
+              <li>Descripción: <code>sshd: authentication failed.</code></li>
+              <li>Agente: <code>001 / SOC-ENDPOINT-01</code>.</li>
+              <li>Puede aparecer luego Rule <code>5762</code> por reset de conexión.</li>
+              <li>MITRE de Wazuh: <code>T1110.001</code> y <code>T1021.004</code>; es contexto, no prueba de ataque.</li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>3. Triage SOC L1</summary>
+          <div class="section">
+            <ol>
+              <li>Ubicá el evento por <strong>timestamp</strong>, agente y <code>rule.id:5760</code>.</li>
+              <li>Verificá usuario, origen y cantidad de intentos en la ventana cercana.</li>
+              <li>Buscá eventos inmediatamente anteriores/posteriores, incluida Rule <code>5762</code>.</li>
+              <li>Si necesitás corroboración local, revisá el journal del endpoint:</li>
+            </ol>
+            <pre><code>journalctl -u ssh --since "-10 min" --no-pager | tail -n 80</code></pre>
+            <ol start="5">
+              <li>Preguntate: ¿es un único fallo o una secuencia? ¿hubo acceso exitoso después? ¿el usuario y host son esperados?</li>
+            </ol>
+          </div>
+        </details>
+        <details>
+          <summary>4. Decisión y cierre</summary>
+          <div class="section solution decision">
+            <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign. Sin contención.</p>
+            <p><strong>No concluir:</strong> un único fallo no demuestra brute force, lateral movement ni cuenta comprometida.</p>
+          </div>
+        </details>
+      </article>
+
+      <article class="card" data-level="1">
+        <div class="card-head">
+          <div class="meta"><span class="badge b1">Nivel 1</span><span class="badge">TEST-002</span><span class="badge">FIM</span></div>
+          <h2>Modificación de archivo monitorizado</h2>
+          <p>Practicá integridad, correlación temporal y diferencia entre “cambio real” e “intención maliciosa”.</p>
+          <div class="flow">archivo → Wazuh FIM/syscheck → Rule 550 → Threat Hunting</div>
+        </div>
+        <details>
+          <summary>1. Generar el evento</summary>
+          <div class="section">
+            <div class="warning"><p>El path validado es <code>/opt/mini-soc/fim-test/controlled.conf</code>. No uses directorios productivos.</p></div>
+            <ol>
+              <li>Confirmá Agent 001 activo y FIM realtime habilitado para <code>/opt/mini-soc/fim-test</code>.</li>
+              <li>En <code>SOC-ENDPOINT-01</code>, usá una sesión root autorizada. Si entrás con <code>su -</code>, recordá que también generarás telemetría de privilegios.</li>
+              <li>Modificá una sola vez el archivo controlado:</li>
+            </ol>
+            <pre><code>printf 'mini-soc-fim-training-001\n' &gt; /opt/mini-soc/fim-test/controlled.conf</code></pre>
+            <button class="copy" data-copy="printf 'mini-soc-fim-training-001\n' > /opt/mini-soc/fim-test/controlled.conf">Copiar comando</button>
+            <ol start="4"><li>No reinicies Wazuh después del cambio; la prueba busca validar realtime.</li></ol>
+          </div>
+        </details>
+        <details>
+          <summary>2. Qué deberías ver</summary>
+          <div class="section solution expected">
+            <ul>
+              <li>Wazuh Rule <code>550</code>, level <code>7</code>.</li>
+              <li><code>Integrity checksum changed.</code></li>
+              <li><code>mode: realtime</code> y <code>event: modified</code>.</li>
+              <li>Cambios de integridad: mtime y hashes MD5/SHA1/SHA256.</li>
+              <li>Agente: <code>001 / SOC-ENDPOINT-01</code>.</li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>3. Triage SOC L1</summary>
+          <div class="section">
+            <ol>
+              <li>Validá path exacto y tipo de evento.</li>
+              <li>Revisá qué atributos cambiaron y los valores de integridad antes/después disponibles en Wazuh.</li>
+              <li>Buscá eventos de identidad/privilegios alrededor del timestamp para entender quién pudo modificarlo.</li>
+              <li>Corroborá el estado actual del archivo sólo si aporta contexto:</li>
+            </ol>
+            <pre><code>stat /opt/mini-soc/fim-test/controlled.conf
+sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
+            <ol start="5"><li>Determiná si el cambio estaba autorizado antes de decidir escalamiento.</li></ol>
+          </div>
+        </details>
+        <details>
+          <summary>4. Decisión y cierre</summary>
+          <div class="section solution decision">
+            <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign.</p>
+            <p><strong>No concluir:</strong> un checksum cambiado confirma modificación, no malware ni compromiso por sí solo.</p>
+          </div>
+        </details>
+      </article>
+
+      <article class="card" data-level="2">
+        <div class="card-head">
+          <div class="meta"><span class="badge b2">Nivel 2</span><span class="badge">TEST-003</span><span class="badge">Identidad</span></div>
+          <h2>Sesión privilegiada con <code>su -</code></h2>
+          <p>Entrená triage de una transición real a root sin asumir que toda actividad privilegiada es un incidente.</p>
+          <div class="flow">socops → su - → PAM → Wazuh Rule 5501 / 5502</div>
+        </div>
+        <details>
+          <summary>1. Generar el evento</summary>
+          <div class="section">
+            <ol>
+              <li>Entrá a <code>SOC-ENDPOINT-01</code> como <code>socops</code>.</li>
+              <li>Ejecutá:</li>
+            </ol>
+            <pre><code>su -</code></pre>
+            <button class="copy" data-copy="su -">Copiar comando</button>
+            <ol start="3">
+              <li>Autenticate correctamente como root.</li>
+              <li>Como verificación inocua podés ejecutar <code>whoami</code>.</li>
+              <li>Salí inmediatamente con <code>exit</code>; no realices cambios privilegiados.</li>
+            </ol>
+          </div>
+        </details>
+        <details>
+          <summary>2. Qué deberías ver</summary>
+          <div class="section solution expected">
+            <ul>
+              <li>Rule <code>5501</code>, level <code>3</code>: <code>PAM: Login session opened.</code></li>
+              <li>Program: <code>su</code>; source user <code>socops</code>; target user <code>root</code>; source UID <code>1000</code>.</li>
+              <li>Rule <code>5502</code> registra el cierre de sesión.</li>
+              <li>Wazuh aporta contexto ATT&amp;CK <code>T1078 — Valid Accounts</code>.</li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>3. Triage SOC L1</summary>
+          <div class="section">
+            <ol>
+              <li>Confirmá identidad origen y destino: <code>socops → root</code>.</li>
+              <li>Correlacioná apertura y cierre de sesión por timestamp.</li>
+              <li>Buscá cambios, comandos o alertas relevantes ocurridos dentro de esa ventana.</li>
+              <li>Si necesitás corroboración local:</li>
+            </ol>
+            <pre><code>journalctl --since "-10 min" _COMM=su --no-pager</code></pre>
+            <ol start="5"><li>Validá si la actividad estaba autorizada. ATT&amp;CK no determina intención.</li></ol>
+          </div>
+        </details>
+        <details>
+          <summary>4. Decisión y cierre</summary>
+          <div class="section solution decision">
+            <p><strong>Ejercicio validado:</strong> True Positive — Authorized Administrative Activity / Benign.</p>
+            <p>Separá siempre: verdad del evento, verdad de la detección, contexto ATT&amp;CK y conclusión del incidente.</p>
+          </div>
+        </details>
+      </article>
+
+      <article class="card" data-level="2">
+        <div class="card-head">
+          <div class="meta"><span class="badge b2">Nivel 2</span><span class="badge">TEST-004</span><span class="badge">Network IDS</span></div>
+          <h2>Anomalía UDP controlada</h2>
+          <p>Practicá una detección de red end-to-end sin contención automática y sin convertir una anomalía en “DDoS”.</p>
+          <div class="flow">TEST → GW/Suricata SID 1000002 → EVE JSON → Wazuh Rule 86601</div>
+        </div>
+        <details>
+          <summary>1. Generar el evento</summary>
+          <div class="section">
+            <ol>
+              <li>Desde Windows PowerShell entrá al gateway:</li>
+            </ol>
+            <pre><code>ssh -p 2223 socops@127.0.0.1</code></pre>
+            <ol start="2"><li>Desde <code>SOC-GW-01</code> entrá al workload:</li></ol>
+            <pre><code>ssh socops@10.77.0.10</code></pre>
+            <ol start="3"><li>Ejecutá primero el baseline negativo:</li></ol>
+            <pre><code>hping3 --udp -p 65000 -c 5 -i 1 10.77.0.1</code></pre>
+            <ol start="4"><li>Después ejecutá el caso positivo acotado:</li></ol>
+            <pre><code>hping3 --udp -p 65000 -c 30 -i u20000 10.77.0.1</code></pre>
+            <button class="copy" data-copy="hping3 --udp -p 65000 -c 30 -i u20000 10.77.0.1">Copiar caso positivo</button>
+            <div class="danger"><p><strong>No uses <code>--flood</code></strong>. Este caso está diseñado como anomalía de tasa limitada, no como prueba DoS/DDoS.</p></div>
+          </div>
+        </details>
+        <details>
+          <summary>2. Qué deberías ver</summary>
+          <div class="section solution expected">
+            <ul>
+              <li>Suricata SID <code>1000002</code>: <code>MINI-SOC Controlled UDP Rate Anomaly</code>.</li>
+              <li>Origen <code>10.77.0.10</code> → destino <code>10.77.0.1:65000/UDP</code>.</li>
+              <li>Acción Suricata: <code>allowed</code>.</li>
+              <li>Wazuh Rule <code>86601</code>, level <code>3</code>, desde <code>/var/log/suricata/eve.json</code>.</li>
+              <li>No debe aparecer un nuevo SID <code>1000001</code> ni Active Response.</li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>3. Triage SOC L1</summary>
+          <div class="section">
+            <ol>
+              <li>En Threat Hunting buscá <code>data.alert.signature_id:1000002</code> o Rule <code>86601</code> y acotá el tiempo.</li>
+              <li>Validá origen, destino, puerto, protocolo, agente <code>SOC-GW-01</code> y signature.</li>
+              <li>Revisá eventos cercanos para descartar que el flujo haya activado SID <code>1000001</code> o contención.</li>
+              <li>Si querés corroborar el evento directamente en GW:</li>
+            </ol>
+            <pre><code>grep -F '"signature_id":1000002' /var/log/suricata/eve.json | tail -n 1</code></pre>
+            <ol start="5"><li>Evaluá impacto real. La condición de tasa por sí sola no prueba ataque ni degradación de servicio.</li></ol>
+          </div>
+        </details>
+        <details>
+          <summary>4. Decisión y cierre</summary>
+          <div class="section solution decision">
+            <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign.</p>
+            <p>Escalación: no. Contención: no. Active Response: no. ATT&amp;CK: no forzado sin contexto adversario.</p>
+          </div>
+        </details>
+      </article>
+
+      <article class="card" data-level="3">
+        <div class="card-head">
+          <div class="meta"><span class="badge b3">Nivel 3</span><span class="badge">TEST-005</span><span class="badge">Response</span></div>
+          <h2>Active Response con rollback</h2>
+          <p>Practicá la diferencia entre detectar y contener: aquí sí existe una respuesta automática acotada.</p>
+          <div class="flow">SID 1000001 → Wazuh 86601 → local 100021 → Python → nftables → timeout 60 s</div>
+        </div>
+        <details>
+          <summary>1. Generar el evento</summary>
+          <div class="section">
+            <ol>
+              <li>Desde <code>SOC-TEST-01</code>, comprobá baseline de salida:</li>
+            </ol>
+            <pre><code>ping -c 3 -W 2 1.1.1.1</code></pre>
+            <ol start="2"><li>Generá <strong>un solo</strong> Echo Request al gateway:</li></ol>
+            <pre><code>ping -c 1 10.77.0.1</code></pre>
+            <button class="copy" data-copy="ping -c 1 10.77.0.1">Copiar trigger</button>
+            <ol start="3">
+              <li>Esperá aproximadamente 5 segundos.</li>
+              <li>Volvé a probar conectividad de salida:</li>
+            </ol>
+            <pre><code>ping -c 3 -W 2 1.1.1.1</code></pre>
+            <ol start="5"><li>Esperá ~60 segundos y repetí el ping de salida para comprobar recuperación.</li></ol>
+          </div>
+        </details>
+        <details>
+          <summary>2. Qué deberías ver</summary>
+          <div class="section solution expected">
+            <ul>
+              <li>Suricata SID <code>1000001</code> por ICMP autorizado.</li>
+              <li>Wazuh Rule nativa <code>86601</code>.</li>
+              <li>Regla local Wazuh <code>100021</code> como trigger específico.</li>
+              <li>Active Response local en <code>SOC-GW-01</code>.</li>
+              <li>nftables bloquea temporalmente sólo <code>10.77.0.10</code>.</li>
+              <li>Después del timeout de 60 s se ejecuta DELETE y vuelve la conectividad.</li>
+            </ul>
+          </div>
+        </details>
+        <details>
+          <summary>3. Triage / validación SOC L1</summary>
+          <div class="section">
+            <ol>
+              <li>Confirmá que el evento corresponde a SID <code>1000001</code>, no a <code>1000002</code>.</li>
+              <li>Revisá que el origen sea exactamente <code>10.77.0.10</code>.</li>
+              <li>En el gateway, verificá el estado runtime de la tabla:</li>
+            </ol>
+            <pre><code>sudo nft list table inet mini_soc_ar</code></pre>
+            <ol start="4">
+              <li>Durante el bloqueo, el set <code>blocked_ipv4</code> debe contener sólo <code>10.77.0.10</code>.</li>
+              <li>Después de ~60 s, verificá que el set quede vacío y que TEST recupere conectividad.</li>
+              <li>Confirmá salud final:</li>
+            </ol>
+            <pre><code>systemctl is-active wazuh-agent suricata nftables
+sysctl net.ipv4.ip_forward</code></pre>
+          </div>
+        </details>
+        <details>
+          <summary>4. Decisión y cierre</summary>
+          <div class="section solution decision">
+            <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign. La contención automática fue intencional.</p>
+            <p><strong>Control de seguridad:</strong> la respuesta está limitada por regla específica, allowlist exacta, ejecución local, tabla nftables runtime y timeout. No modifica <code>/etc/nftables.conf</code>.</p>
+          </div>
+        </details>
+      </article>
+
+    </section>
+
+    <p class="footer-note">Fuente de verdad: <code>docs/detections/SOC-DET-001..004</code>, <code>docs/CHG-019.md</code>, <code>docs/CHG-021.md</code> y <code>docs/CHG-025.md</code>. Esta consola es material de entrenamiento; si una salida real contradice la card, investigá la diferencia antes de forzar una conclusión.</p>
+  </main>
+
+  <script>
+    const filters = [...document.querySelectorAll('.filter')];
+    const cards = [...document.querySelectorAll('.card')];
+    filters.forEach(btn => btn.addEventListener('click', () => {
+      filters.forEach(x => x.setAttribute('aria-pressed','false'));
+      btn.setAttribute('aria-pressed','true');
+      const level = btn.dataset.level;
+      cards.forEach(card => card.classList.toggle('hidden-card', level !== 'all' && card.dataset.level !== level));
+    }));
+
+    const mode = document.getElementById('mode');
+    mode.addEventListener('click', () => {
+      document.body.classList.toggle('solution-hidden');
+      mode.textContent = document.body.classList.contains('solution-hidden')
+        ? 'Modo simulación: mostrar solución'
+        : 'Modo simulación: ocultar solución';
+    });
+
+    document.querySelectorAll('[data-copy]').forEach(btn => btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copy);
+        const old = btn.textContent;
+        btn.textContent = 'Copiado';
+        setTimeout(() => btn.textContent = old, 1100);
+      } catch {
+        btn.textContent = 'Copiá el bloque manualmente';
+      }
+    }));
+  </script>
+</body>
+</html>
