@@ -70,6 +70,12 @@ La arquitectura implementada, sus flujos de confianza y el recorrido detection-t
 
 La evidencia distingue deliberadamente **detección**, **contexto**, **disposición analítica** y **respuesta**. Un evento que coincide con una regla no se presenta automáticamente como incidente.
 
+## Entrenamiento SOC L1
+
+La consola estática de práctica vive en [`training/soc-l1-console.html`](training/soc-l1-console.html). Organiza los casos validados del laboratorio por nivel y separa generación del evento, alerta esperada, triage, evidencia, decisión y cierre.
+
+La interfaz no ejecuta comandos ni modifica el runtime. Su modo simulación permite ocultar la solución mientras se investiga cada alerta.
+
 ## Flujo de cambio
 
 Los cambios se realizan mediante ramas pequeñas y pull requests. GitHub conserva scripts y documentación; las VMs son el entorno de ejecución y UAT.
