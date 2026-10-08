@@ -57,6 +57,18 @@
     .danger{border-left:3px solid var(--red);padding-left:12px}
     .solution-hidden .solution{filter:blur(7px);user-select:none;pointer-events:none;opacity:.55}
     .solution-hidden .solution::selection{background:transparent}
+    .runbook{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:14px 0 0}
+    .runbook div{background:#0a1625;border:1px solid #213750;border-radius:12px;padding:11px 12px}
+    .runbook strong{display:block;color:#dfeeff;margin-bottom:4px}
+    .runbook span{color:var(--muted);font-size:.87rem;line-height:1.45}
+    .checklist{list-style:none;padding-left:0}
+    .checklist li{position:relative;padding-left:28px}
+    .checklist li::before{content:"□";position:absolute;left:2px;color:var(--cyan);font-weight:900}
+    .query{border-left:3px solid var(--cyan);padding-left:12px}
+    .escalate{border-left:3px solid var(--red);padding-left:12px}
+    .close-note{background:#0a1625;border:1px dashed #36506d;border-radius:12px;padding:12px;margin-top:10px}
+    .close-note p{margin:.3rem 0}
+    .micro{font-size:.86rem;color:var(--muted)}
     .footer-note{margin-top:28px;color:var(--muted);font-size:.9rem;line-height:1.55}
     .hidden-card{display:none}
     @media(max-width:720px){.mode{margin-left:0;width:100%}}
@@ -69,6 +81,12 @@
       <h1>Consola de práctica SOC L1</h1>
       <p class="lead">Casos basados únicamente en controles y detecciones ya validados del laboratorio. Cada card separa generación del evento, alerta esperada, triage, evidencia, decisión y cierre para practicar como si estuvieras atendiendo una cola SOC.</p>
       <div class="notice"><strong>Uso autorizado:</strong> ejecutá estos tests sólo dentro de tu Mini-SOC. La interfaz no ejecuta comandos, no contiene credenciales y no modifica Wazuh, Suricata, nftables ni las VMs.</div>
+      <div class="runbook">
+        <div><strong>1 · Detectar</strong><span>Ubicá la alerta por tiempo, agente, regla y fuente de datos.</span></div>
+        <div><strong>2 · Validar</strong><span>Confirmá que el evento ocurrió y que la telemetría es confiable.</span></div>
+        <div><strong>3 · Contextualizar</strong><span>Revisá usuario, IP, host, eventos cercanos, autorización e impacto.</span></div>
+        <div><strong>4 · Decidir</strong><span>Cerrá, monitoreá o escalá con evidencia. No respondas por reflejo.</span></div>
+      </div>
     </header>
 
     <div class="toolbar">
@@ -88,7 +106,21 @@
           <p>Entrená triage de un único fallo de autenticación sin confundirlo con brute force o compromiso.</p>
           <div class="flow">sshd → journald → Wazuh Agent → Manager → Rule 5760 → Threat Hunting</div>
         </div>
-        <details open>
+        
+        <details>
+          <summary>0. Objetivo, alcance y precondiciones</summary>
+          <div class="section">
+            <p><strong>Qué entrenás:</strong> distinguir un fallo real de autenticación de una conclusión exagerada como “brute force” o “cuenta comprometida”.</p>
+            <ul class="checklist">
+              <li><code>SOC-ENDPOINT-01</code> encendido y Agent 001 en estado <strong>Active</strong>.</li>
+              <li>Telemetría SSH recolectada desde journald.</li>
+              <li>Ventana horaria anotada antes de generar el evento.</li>
+              <li>Una sola prueba autorizada; no repetir credenciales.</li>
+            </ul>
+            <p class="micro"><strong>Éxito técnico:</strong> evento visible en endpoint y alerta Rule 5760 en Wazuh. <strong>Éxito analítico:</strong> no inferir intención sin contexto.</p>
+          </div>
+        </details>
+<details open>
           <summary>1. Generar el evento</summary>
           <div class="section">
             <h3>PC principal · Windows PowerShell</h3>
@@ -105,8 +137,18 @@
           </div>
         </details>
         <details>
-          <summary>2. Qué deberías ver</summary>
-          <div class="section solution expected">
+          <summary>2. Localizar la alerta y qué deberías ver</summary>
+          <div class="section">
+            <div class="query">
+              <h3>Wazuh Dashboard · Threat Hunting</h3>
+              <ol>
+                <li>Abrí <strong>Threat Hunting</strong> y elegí una ventana corta que cubra la hora de la prueba.</li>
+                <li>Filtrá por <code>rule.id:5760</code>.</li>
+                <li>Confirmá que <code>agent.name</code> sea <code>SOC-ENDPOINT-01</code>.</li>
+                <li>Abrí el documento y anotá timestamp, usuario, origen disponible, descripción y campos de regla.</li>
+              </ol>
+            </div>
+            <div class="solution expected">
             <ul>
               <li>Wazuh Rule <code>5760</code>, level <code>5</code>.</li>
               <li>Descripción: <code>sshd: authentication failed.</code></li>
@@ -114,6 +156,7 @@
               <li>Puede aparecer luego Rule <code>5762</code> por reset de conexión.</li>
               <li>MITRE de Wazuh: <code>T1110.001</code> y <code>T1021.004</code>; es contexto, no prueba de ataque.</li>
             </ul>
+            </div>
           </div>
         </details>
         <details>
@@ -128,6 +171,8 @@
             <pre><code>journalctl -u ssh --since "-10 min" --no-pager | tail -n 80</code></pre>
             <ol start="5">
               <li>Preguntate: ¿es un único fallo o una secuencia? ¿hubo acceso exitoso después? ¿el usuario y host son esperados?</li>
+              <li>Si ves múltiples fallos, ampliá la ventana y contá eventos antes de hablar de brute force.</li>
+              <li>Si aparece un login exitoso cercano, registralo como contexto y evaluá si corresponde escalar.</li>
             </ol>
           </div>
         </details>
@@ -136,9 +181,16 @@
           <div class="section solution decision">
             <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign. Sin contención.</p>
             <p><strong>No concluir:</strong> un único fallo no demuestra brute force, lateral movement ni cuenta comprometida.</p>
+            <div class="escalate"><h3>Escalá si</h3><ul><li>hay repetición significativa o múltiples usuarios/hosts;</li><li>aparece un acceso exitoso sospechoso cercano;</li><li>el origen no es esperado o no existe autorización;</li><li>hay otras alertas correlacionadas que eleven el riesgo.</li></ul></div>
+            <div class="close-note"><p><strong>Registro mínimo:</strong> hora · agente · usuario · origen · rule 5760 · cantidad observada · eventos relacionados · disposición · acción.</p><p><strong>Cierre ejemplo:</strong> “TP benigno. Un único fallo SSH autorizado, sin evidencia de acceso exitoso o actividad posterior. Sin contención; monitoreo normal.”</p></div>
           </div>
         </details>
-      </article>
+      
+        <details>
+          <summary>5. Si la alerta o el resultado no aparece</summary>
+          <div class="section warning"><ul><li>Agent 001 debe figurar Active.</li><li>Confirmá que el fallo existe en journald antes de culpar a Wazuh.</li><li>Si el evento local existe pero no llega, revisá la salud del agente y la conectividad de telemetría.</li></ul><p><strong>Regla de operación:</strong> no “arregles” varias capas a la vez. Aislá el punto donde se corta el flujo y hacé el cambio mínimo.</p></div>
+        </details>
+</article>
 
       <article class="card" data-level="1">
         <div class="card-head">
@@ -147,7 +199,20 @@
           <p>Practicá integridad, correlación temporal y diferencia entre “cambio real” e “intención maliciosa”.</p>
           <div class="flow">archivo → Wazuh FIM/syscheck → Rule 550 → Threat Hunting</div>
         </div>
+        
         <details>
+          <summary>0. Objetivo, alcance y precondiciones</summary>
+          <div class="section">
+            <p><strong>Qué entrenás:</strong> confirmar una modificación real, preservar evidencia de integridad y determinar si el cambio estaba autorizado.</p>
+            <ul class="checklist">
+              <li>Agent 001 activo y sesión de telemetría saludable.</li>
+              <li><code>/opt/mini-soc/fim-test</code> configurado con FIM realtime.</li>
+              <li>Archivo controlado existente antes de modificarlo.</li>
+              <li>No reiniciar Wazuh para “forzar” la alerta.</li>
+            </ul>
+          </div>
+        </details>
+<details>
           <summary>1. Generar el evento</summary>
           <div class="section">
             <div class="warning"><p>El path validado es <code>/opt/mini-soc/fim-test/controlled.conf</code>. No uses directorios productivos.</p></div>
@@ -162,8 +227,10 @@
           </div>
         </details>
         <details>
-          <summary>2. Qué deberías ver</summary>
-          <div class="section solution expected">
+          <summary>2. Localizar la alerta y qué deberías ver</summary>
+          <div class="section">
+            <div class="query"><h3>Wazuh Dashboard · Threat Hunting</h3><ol><li>Acotá la ventana al momento exacto de la modificación.</li><li>Filtrá por <code>rule.id:550</code> y <code>agent.name:SOC-ENDPOINT-01</code>.</li><li>Confirmá path, <code>mode: realtime</code>, tipo de evento y atributos de integridad.</li></ol></div>
+            <div class="solution expected">
             <ul>
               <li>Wazuh Rule <code>550</code>, level <code>7</code>.</li>
               <li><code>Integrity checksum changed.</code></li>
@@ -171,6 +238,7 @@
               <li>Cambios de integridad: mtime y hashes MD5/SHA1/SHA256.</li>
               <li>Agente: <code>001 / SOC-ENDPOINT-01</code>.</li>
             </ul>
+          </div>
           </div>
         </details>
         <details>
@@ -192,9 +260,16 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           <div class="section solution decision">
             <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign.</p>
             <p><strong>No concluir:</strong> un checksum cambiado confirma modificación, no malware ni compromiso por sí solo.</p>
+            <div class="escalate"><h3>Escalá si</h3><ul><li>el path no corresponde al harness autorizado;</li><li>el cambio afecta configuración sensible o ejecutables;</li><li>no existe cambio aprobado o dueño identificable;</li><li>hay eventos de privilegio, autenticación o red correlacionados.</li></ul></div>
+            <div class="close-note"><p><strong>Registro mínimo:</strong> timestamp · host · path · evento · hashes/atributos · identidad asociada · autorización · impacto · disposición.</p><p><strong>Cierre ejemplo:</strong> “TP benigno. Modificación FIM realtime confirmada sobre archivo controlado; cambio autorizado y sin impacto adicional.”</p></div>
           </div>
         </details>
-      </article>
+      
+        <details>
+          <summary>5. Si la alerta o el resultado no aparece</summary>
+          <div class="section warning"><ul><li>Confirmá que el path exacto está bajo FIM realtime.</li><li>Verificá Agent 001 Active y no repitas cambios hasta entender la ausencia de telemetría.</li><li>No aceptes como evidencia una prueba hecha mientras el camino endpoint→manager estaba caído.</li></ul><p><strong>Regla de operación:</strong> no “arregles” varias capas a la vez. Aislá el punto donde se corta el flujo y hacé el cambio mínimo.</p></div>
+        </details>
+</article>
 
       <article class="card" data-level="2">
         <div class="card-head">
@@ -203,7 +278,20 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           <p>Entrená triage de una transición real a root sin asumir que toda actividad privilegiada es un incidente.</p>
           <div class="flow">socops → su - → PAM → Wazuh Rule 5501 / 5502</div>
         </div>
+        
         <details>
+          <summary>0. Objetivo, alcance y precondiciones</summary>
+          <div class="section">
+            <p><strong>Qué entrenás:</strong> investigación de identidad y privilegios: quién abrió la sesión, hacia qué cuenta, cuánto duró y qué ocurrió dentro de esa ventana.</p>
+            <ul class="checklist">
+              <li>Inicio desde una shell autenticada de <code>socops</code>.</li>
+              <li>Agent 001 activo.</li>
+              <li>La prueba se limita a abrir y cerrar la sesión root.</li>
+              <li>No realizar cambios privilegiados durante el escenario base.</li>
+            </ul>
+          </div>
+        </details>
+<details>
           <summary>1. Generar el evento</summary>
           <div class="section">
             <ol>
@@ -220,14 +308,17 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           </div>
         </details>
         <details>
-          <summary>2. Qué deberías ver</summary>
-          <div class="section solution expected">
+          <summary>2. Localizar la alerta y qué deberías ver</summary>
+          <div class="section">
+            <div class="query"><h3>Wazuh Dashboard · Threat Hunting</h3><ol><li>Filtrá por <code>rule.id:5501</code> para la apertura.</li><li>Confirmá <code>srcuser=socops</code>, destino <code>root</code>, programa <code>su</code> y UID origen.</li><li>Buscá Rule <code>5502</code> inmediatamente después para cerrar el ciclo.</li></ol></div>
+            <div class="solution expected">
             <ul>
               <li>Rule <code>5501</code>, level <code>3</code>: <code>PAM: Login session opened.</code></li>
               <li>Program: <code>su</code>; source user <code>socops</code>; target user <code>root</code>; source UID <code>1000</code>.</li>
               <li>Rule <code>5502</code> registra el cierre de sesión.</li>
               <li>Wazuh aporta contexto ATT&amp;CK <code>T1078 — Valid Accounts</code>.</li>
             </ul>
+          </div>
           </div>
         </details>
         <details>
@@ -248,9 +339,16 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           <div class="section solution decision">
             <p><strong>Ejercicio validado:</strong> True Positive — Authorized Administrative Activity / Benign.</p>
             <p>Separá siempre: verdad del evento, verdad de la detección, contexto ATT&amp;CK y conclusión del incidente.</p>
+            <div class="escalate"><h3>Escalá si</h3><ul><li>no hay autorización para la elevación;</li><li>la identidad origen no coincide con el contexto esperado;</li><li>la sesión queda abierta o aparecen cambios sensibles durante ella;</li><li>se correlaciona con autenticaciones o FIM sospechosos.</li></ul></div>
+            <div class="close-note"><p><strong>Registro mínimo:</strong> apertura · cierre · usuario origen · usuario destino · UID · host · actividad relacionada · autorización · disposición.</p></div>
           </div>
         </details>
-      </article>
+      
+        <details>
+          <summary>5. Si la alerta o el resultado no aparece</summary>
+          <div class="section warning"><ul><li>Confirmá que comenzaste como <code>socops</code> y que la sesión root realmente abrió.</li><li>Revisá journald/PAM localmente y luego Wazuh.</li><li>Si falta 5502, comprobá que la sesión se haya cerrado.</li></ul><p><strong>Regla de operación:</strong> no “arregles” varias capas a la vez. Aislá el punto donde se corta el flujo y hacé el cambio mínimo.</p></div>
+        </details>
+</article>
 
       <article class="card" data-level="2">
         <div class="card-head">
@@ -259,7 +357,20 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           <p>Practicá una detección de red end-to-end sin contención automática y sin convertir una anomalía en “DDoS”.</p>
           <div class="flow">TEST → GW/Suricata SID 1000002 → EVE JSON → Wazuh Rule 86601</div>
         </div>
+        
         <details>
+          <summary>0. Objetivo, alcance y precondiciones</summary>
+          <div class="section">
+            <p><strong>Qué entrenás:</strong> triage de una alerta NIDS basada en tasa, validando el camino completo sin confundir “match de regla” con “DDoS”.</p>
+            <ul class="checklist">
+              <li><code>SOC-TEST-01 = 10.77.0.10</code> y gateway <code>10.77.0.1</code>.</li>
+              <li>Suricata, Wazuh Agent y nftables activos en <code>SOC-GW-01</code>.</li>
+              <li>UDP/65000 reservado para el harness de laboratorio.</li>
+              <li>Regla SID <code>1000002</code> cargada; CHG-025 sigue siendo detection-only.</li>
+            </ul>
+          </div>
+        </details>
+<details>
           <summary>1. Generar el evento</summary>
           <div class="section">
             <ol>
@@ -277,8 +388,10 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           </div>
         </details>
         <details>
-          <summary>2. Qué deberías ver</summary>
-          <div class="section solution expected">
+          <summary>2. Localizar la alerta y qué deberías ver</summary>
+          <div class="section">
+            <div class="query"><h3>Wazuh Dashboard · Threat Hunting</h3><ol><li>Acotá la ventana al test.</li><li>Filtrá preferentemente por <code>data.alert.signature_id:1000002</code>.</li><li>Como control adicional usá <code>rule.id:86601</code> y verificá la firma Suricata en el documento.</li><li>Confirmá que el agente sea <code>SOC-GW-01</code> y la fuente <code>/var/log/suricata/eve.json</code>.</li></ol></div>
+            <div class="solution expected">
             <ul>
               <li>Suricata SID <code>1000002</code>: <code>MINI-SOC Controlled UDP Rate Anomaly</code>.</li>
               <li>Origen <code>10.77.0.10</code> → destino <code>10.77.0.1:65000/UDP</code>.</li>
@@ -286,6 +399,7 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
               <li>Wazuh Rule <code>86601</code>, level <code>3</code>, desde <code>/var/log/suricata/eve.json</code>.</li>
               <li>No debe aparecer un nuevo SID <code>1000001</code> ni Active Response.</li>
             </ul>
+          </div>
           </div>
         </details>
         <details>
@@ -306,9 +420,16 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           <div class="section solution decision">
             <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign.</p>
             <p>Escalación: no. Contención: no. Active Response: no. ATT&amp;CK: no forzado sin contexto adversario.</p>
+            <div class="escalate"><h3>En un caso no autorizado, escalá si</h3><ul><li>la tasa/patrón persiste fuera de la ventana de prueba;</li><li>el origen o destino no pertenece al harness esperado;</li><li>hay evidencia de impacto de disponibilidad;</li><li>aparecen múltiples firmas o activos afectados.</li></ul></div>
+            <div class="close-note"><p><strong>Registro mínimo:</strong> timestamp · src/dst/puerto/protocolo · SID 1000002 · Wazuh 86601 · agente · acción allowed · volumen observado · impacto · disposición.</p><p><strong>Cierre ejemplo:</strong> “TP benigno. Threshold UDP del laboratorio alcanzado y centralizado en Wazuh. Sin impacto, sin Active Response y sin necesidad de contención.”</p></div>
           </div>
         </details>
-      </article>
+      
+        <details>
+          <summary>5. Si la alerta o el resultado no aparece</summary>
+          <div class="section warning"><ul><li>Confirmá que Suricata está activo y que SID 1000002 está cargado.</li><li>Revisá primero EVE JSON; si el evento existe allí pero no en Wazuh, el problema está aguas abajo del sensor.</li><li>Confirmá Wazuh Agent de GW activo y que lee <code>/var/log/suricata/eve.json</code>.</li></ul><p><strong>Regla de operación:</strong> no “arregles” varias capas a la vez. Aislá el punto donde se corta el flujo y hacé el cambio mínimo.</p></div>
+        </details>
+</article>
 
       <article class="card" data-level="3">
         <div class="card-head">
@@ -317,7 +438,21 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           <p>Practicá la diferencia entre detectar y contener: aquí sí existe una respuesta automática acotada.</p>
           <div class="flow">SID 1000001 → Wazuh 86601 → local 100021 → Python → nftables → timeout 60 s</div>
         </div>
+        
         <details>
+          <summary>0. Objetivo, alcance y precondiciones</summary>
+          <div class="section">
+            <p><strong>Qué entrenás:</strong> verificar no sólo una detección, sino todo el ciclo de contención y recuperación con blast radius limitado.</p>
+            <ul class="checklist">
+              <li>SID <code>1000001</code> presente y semánticamente sin cambios.</li>
+              <li>Regla local Wazuh <code>100021</code> habilitada.</li>
+              <li>Script <code>mini-soc-nft-block.py</code> disponible con permisos correctos.</li>
+              <li>Allowlist exacta <code>10.77.0.10</code> y timeout <code>60 s</code>.</li>
+              <li>Baseline de conectividad registrado antes de disparar el evento.</li>
+            </ul>
+          </div>
+        </details>
+<details>
           <summary>1. Generar el evento</summary>
           <div class="section">
             <ol>
@@ -336,8 +471,10 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
           </div>
         </details>
         <details>
-          <summary>2. Qué deberías ver</summary>
-          <div class="section solution expected">
+          <summary>2. Secuencia esperada y puntos de control</summary>
+          <div class="section">
+            <div class="query"><h3>Correlación que tenés que comprobar</h3><ol><li>Suricata genera SID <code>1000001</code>.</li><li>Wazuh lo recibe mediante Rule <code>86601</code>.</li><li>La regla local <code>100021</code> acota el trigger.</li><li>Active Response ejecuta el script local en GW.</li><li>nftables aplica el bloqueo runtime y luego revierte por timeout.</li></ol></div>
+            <div class="solution expected">
             <ul>
               <li>Suricata SID <code>1000001</code> por ICMP autorizado.</li>
               <li>Wazuh Rule nativa <code>86601</code>.</li>
@@ -346,6 +483,7 @@ sha256sum /opt/mini-soc/fim-test/controlled.conf</code></pre>
               <li>nftables bloquea temporalmente sólo <code>10.77.0.10</code>.</li>
               <li>Después del timeout de 60 s se ejecuta DELETE y vuelve la conectividad.</li>
             </ul>
+          </div>
           </div>
         </details>
         <details>
@@ -371,12 +509,20 @@ sysctl net.ipv4.ip_forward</code></pre>
           <div class="section solution decision">
             <p><strong>Ejercicio validado:</strong> True Positive — Authorized Security Test / Benign. La contención automática fue intencional.</p>
             <p><strong>Control de seguridad:</strong> la respuesta está limitada por regla específica, allowlist exacta, ejecución local, tabla nftables runtime y timeout. No modifica <code>/etc/nftables.conf</code>.</p>
+            <div class="escalate"><h3>Escalá / detené la prueba si</h3><ul><li>el bloqueo alcanza una IP distinta de <code>10.77.0.10</code>;</li><li>la administración o telemetría Wazuh se ve afectada;</li><li>no ocurre DELETE al finalizar el timeout;</li><li>la conectividad no se recupera o algún servicio queda degradado.</li></ul></div>
+            <div class="close-note"><p><strong>Registro mínimo:</strong> alerta inicial · Rule 100021 · hora ADD · contenido del set · pérdida de conectividad · hora DELETE · recuperación · salud final.</p><p><strong>Cierre ejemplo:</strong> “TP benigno con respuesta automática autorizada. Contención limitada a TEST, rollback a 60 s y servicios saludables al finalizar.”</p></div>
           </div>
         </details>
-      </article>
+      
+        <details>
+          <summary>5. Si la alerta o el resultado no aparece</summary>
+          <div class="section warning"><ul><li>Confirmá primero que SID 1000001 llegó a Wazuh.</li><li>Después verificá Rule 100021 y el Active Response; no saltes directamente a nftables.</li><li>Si existe ADD sin DELETE, priorizá recuperación y revisá el estado runtime antes de repetir la prueba.</li></ul><p><strong>Regla de operación:</strong> no “arregles” varias capas a la vez. Aislá el punto donde se corta el flujo y hacé el cambio mínimo.</p></div>
+        </details>
+</article>
 
     </section>
 
+    <div class="notice" style="margin-top:28px"><strong>Ficha rápida para cualquier caso:</strong> Hora → activo → usuario/IP → regla/SID → fuente del log → eventos relacionados → impacto → autorización → disposición → acción → evidencia de cierre. Si no podés completar uno de esos campos, todavía te falta contexto para cerrar con confianza.</div>
     <p class="footer-note">Fuente de verdad: <code>docs/detections/SOC-DET-001..004</code>, <code>docs/CHG-019.md</code>, <code>docs/CHG-021.md</code> y <code>docs/CHG-025.md</code>. Esta consola es material de entrenamiento; si una salida real contradice la card, investigá la diferencia antes de forzar una conclusión.</p>
   </main>
 
