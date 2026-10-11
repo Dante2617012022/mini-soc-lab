@@ -2,6 +2,22 @@
 
 Mini SOC / Blue Team lab con Wazuh, Suricata, YARA, VirusTotal y nftables.
 
+## Recorrido breve para evaluar mi perfil SOC L1
+
+**Dante Gabriel Balbuena Atar · Técnico Universitario en Ciberseguridad (UGR, graduado en 2026).**
+Busco mi primera oportunidad en SOC Nivel 1. Disponibilidad para viajar y relocalizarme en CABA; residencia actual en Tucumán.
+
+La práctica actual se centra en analizar alertas y documentar decisiones. El laboratorio permite revisar el flujo completo, pero no equivale a experiencia SOC productiva.
+
+| Empezar por | Qué muestra | Límite |
+|---|---|---|
+| [FIM y telemetría](docs/detections/SOC-DET-002-fim-realtime-modification.md) | Integridad, diagnóstico de conectividad y triage | Modificación autorizada |
+| [Anomalía UDP](docs/detections/SOC-DET-004-controlled-udp-rate-anomaly.md) | Prueba positiva/negativa y contexto de red | Tráfico benigno y acotado |
+| [Respuesta temporal](docs/CHG-021.md) | Bloqueo con alcance definido y recuperación | Automatización exclusiva del laboratorio |
+| [Cuatro casos y decisiones](docs/ANALYST_REVIEW.md) | Índice para recorrer detecciones y explicar el criterio | Síntesis de evidencia ya documentada |
+
+[Portfolio](https://dante2617012022.github.io/portfolio-web/) · [Solicitar CV por email](mailto:dantebalbuenaatar@gmail.com?subject=Solicitud%20de%20CV%20SOC%20Junior)
+
 ## Objetivo
 
 Construir un laboratorio defensivo, reproducible y auditable que demuestre capacidades prácticas de Security Operations sin presentar un entorno de laboratorio como experiencia SOC de producción.
