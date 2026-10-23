@@ -13,7 +13,8 @@ from unittest.mock import Mock, call, patch
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts" / "active-response"
 SOURCE = "10.77.0.10"
 NFT = "/usr/sbin/nft"
-LIST_TABLE = [NFT, "list", "table", "inet", "mini_soc_ar"]
+LIST_TABLE = [NFT, "-j", "list", "tables"]
+RUNTIME_TABLE = {"family": "inet", "name": "mini_soc_ar", "handle": 1}
 ADD_ELEMENT = [
     NFT, "add", "element", "inet", "mini_soc_ar", "blocked_ipv4", "{", SOURCE, "}"
 ]
@@ -42,8 +43,14 @@ def lines(*messages):
     return "".join(json.dumps(message) + "\n" for message in messages)
 
 
-def result(returncode=0, stderr=""):
-    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout="", stderr=stderr)
+def result(returncode=0, stderr="", stdout=""):
+    return subprocess.CompletedProcess(args=[], returncode=returncode, stdout=stdout, stderr=stderr)
+
+
+def table_list(*tables):
+    items = [{"metainfo": {"json_schema_version": 1}}]
+    items.extend({"table": table} for table in tables)
+    return result(stdout=json.dumps({"nftables": items}))
 
 
 class ActiveResponseTests(unittest.TestCase):
@@ -164,7 +171,7 @@ class ActiveResponseTests(unittest.TestCase):
                 self.nft.assert_not_called()
 
     def test_add_uses_existing_table_after_continue(self):
-        self.nft_results(result(), result())
+        self.nft_results(table_list(RUNTIME_TABLE), result())
         code, output, log = self.invoke(lines(event(), {"command": "continue"}))
         self.assertEqual(code, 0)
         self.assert_check_keys(output)
@@ -173,7 +180,7 @@ class ActiveResponseTests(unittest.TestCase):
         self.assertNotIn("ERROR", log)
 
     def test_first_add_creates_only_dedicated_runtime_forwarding_table(self):
-        self.nft_results(result(1, "No such file or directory"), result(), result())
+        self.nft_results(table_list(), result(), result())
         code, output, log = self.invoke(lines(event(), {"command": "continue"}))
         self.assertEqual(code, 0)
         self.assert_check_keys(output)
@@ -193,7 +200,7 @@ class ActiveResponseTests(unittest.TestCase):
         self.assertIn(f"ADD source={SOURCE}", log)
 
     def test_duplicate_add_is_idempotent(self):
-        self.nft_results(result(), result(1, "Error: File exists"))
+        self.nft_results(table_list(RUNTIME_TABLE), result(1, "Error: File exists"))
         code, _, log = self.invoke(lines(event(), {"command": "continue"}))
         self.assertEqual(code, 0)
         self.assert_commands(LIST_TABLE, ADD_ELEMENT)
@@ -202,7 +209,7 @@ class ActiveResponseTests(unittest.TestCase):
 
     def test_failed_table_creation_stops_before_adding_element(self):
         failure = subprocess.CalledProcessError(1, [NFT, "-f", "-"], stderr="Operation not permitted")
-        self.nft_results(result(1, "No such file or directory"), failure)
+        self.nft_results(table_list(), failure)
         code, _, log = self.invoke(lines(event(), {"command": "continue"}))
         self.assertEqual(code, 1)
         self.assert_commands(LIST_TABLE, [NFT, "-f", "-"])
@@ -210,7 +217,7 @@ class ActiveResponseTests(unittest.TestCase):
         self.assertNotIn("ADD source=", log)
 
     def test_failed_add_reports_error_without_success_log(self):
-        self.nft_results(result(), result(1, "Operation not permitted"))
+        self.nft_results(table_list(RUNTIME_TABLE), result(1, "Operation not permitted"))
         code, _, log = self.invoke(lines(event(), {"command": "continue"}))
         self.assertEqual(code, 1)
         self.assert_commands(LIST_TABLE, ADD_ELEMENT)
@@ -232,7 +239,7 @@ class ActiveResponseTests(unittest.TestCase):
                 self.assertNotIn(f"{command.upper()} source=", log)
 
     def test_delete_removes_only_authorized_element_without_check_keys(self):
-        self.nft_results(result(), result())
+        self.nft_results(table_list(RUNTIME_TABLE), result())
         code, output, log = self.invoke(lines(event("delete")))
         self.assertEqual(code, 0)
         self.assertEqual(output, [])
@@ -241,7 +248,7 @@ class ActiveResponseTests(unittest.TestCase):
         self.assertNotIn("ERROR", log)
 
     def test_delete_of_missing_table_is_idempotent(self):
-        self.nft_results(result(1, "No such file or directory"))
+        self.nft_results(table_list())
         code, output, log = self.invoke(lines(event("delete")))
         self.assertEqual(code, 0)
         self.assertEqual(output, [])
@@ -249,20 +256,109 @@ class ActiveResponseTests(unittest.TestCase):
         self.assertIn(f"DELETE source={SOURCE} table_absent=true", log)
 
     def test_delete_of_missing_element_is_idempotent(self):
-        self.nft_results(result(), result(1, "No such file or directory"))
+        self.nft_results(table_list(RUNTIME_TABLE), result(1, "No such file or directory"))
         code, _, log = self.invoke(lines(event("delete")))
         self.assertEqual(code, 0)
         self.assert_commands(LIST_TABLE, DELETE_ELEMENT)
         self.assertNotIn("ERROR", log)
 
     def test_failed_delete_reports_error_without_success_log(self):
-        self.nft_results(result(), result(1, "Operation not permitted"))
+        self.nft_results(table_list(RUNTIME_TABLE), result(1, "Operation not permitted"))
         code, output, log = self.invoke(lines(event("delete")))
         self.assertEqual(code, 1)
         self.assertEqual(output, [])
         self.assert_commands(LIST_TABLE, DELETE_ELEMENT)
         self.assertIn("ERROR RuntimeError: Operation not permitted", log)
         self.assertNotIn("DELETE source=", log)
+
+    def test_failed_table_query_never_claims_absence_or_mutates(self):
+        for command in ("add", "delete"):
+            with self.subTest(command=command):
+                self.nft.reset_mock()
+                self.nft_results(result(1, "Operation not permitted"))
+                data = lines(event(command))
+                if command == "add":
+                    data += lines({"command": "continue"})
+                code, _, log = self.invoke(data)
+                self.assertEqual(code, 1)
+                self.nft.assert_called_once()
+                self.assertIn("ERROR", log)
+                self.assertIn("Operation not permitted", log)
+                self.assertNotIn("table_absent=true", log)
+                self.assertNotIn(f"{command.upper()} source=", log)
+
+    def test_table_query_failure_is_not_classified_by_stderr_wording(self):
+        for detail in ("No such file or directory", "Operation not supported", "", "Permiso denegado"):
+            for command in ("add", "delete"):
+                with self.subTest(detail=detail, command=command):
+                    self.nft.reset_mock()
+                    self.nft_results(result(1, detail, table_list().stdout))
+                    data = lines(event(command), {"command": "continue"})
+                    code, _, log = self.invoke(data)
+                    self.assertEqual(code, 1)
+                    self.assert_commands(LIST_TABLE)
+                    self.assertIn("nft table query failed (exit 1)", log)
+                    self.assertNotIn("table_absent=true", log)
+                    self.assertNotIn(f"{command.upper()} source=", log)
+
+    def test_invalid_table_inventory_never_claims_absence_or_mutates(self):
+        malformed = (
+            "", "{broken", "null", "[]", "{}", '{"nftables": null}',
+            '{"nftables": {}}', '{"nftables": [null]}', '{"nftables": [{}]}',
+            '{"nftables": [{"table": null}]}', '{"nftables": [{"table": []}]}',
+            '{"nftables": [{"table": {"family": "inet"}}]}',
+            '{"nftables": [{"table": {"name": "mini_soc_ar"}}]}',
+            '{"nftables": [{"table": {"family": "inet", "name": 3}}]}',
+            '{"nftables": [{"table": {"family": "", "name": "mini_soc_ar"}}]}',
+            '{"nftables": [{"table": {"family": "inet", "name": ""}}]}',
+            '{"nftables": [{"metainfo": null}]}', '{"nftables": [{"chain": {}}]}',
+            json.dumps({"nftables": [{"table": RUNTIME_TABLE}, {"table": {}}]}),
+        )
+        for raw in malformed:
+            for command in ("add", "delete"):
+                with self.subTest(raw=raw, command=command):
+                    self.nft.reset_mock()
+                    self.nft_results(result(stdout=raw))
+                    code, _, log = self.invoke(lines(event(command), {"command": "continue"}))
+                    self.assertEqual(code, 1)
+                    self.assert_commands(LIST_TABLE)
+                    self.assertIn("ERROR", log)
+                    self.assertNotIn("table_absent=true", log)
+                    self.assertNotIn(f"{command.upper()} source=", log)
+
+    def test_table_identity_requires_exact_family_and_name(self):
+        unrelated = (
+            {"family": "ip", "name": "mini_soc_ar"},
+            {"family": "inet", "name": "mini_soc_ar_backup"},
+        )
+        for command in ("add", "delete"):
+            with self.subTest(command=command):
+                self.nft.reset_mock()
+                self.nft_results(table_list(*unrelated), result(), result())
+                code, _, log = self.invoke(lines(event(command), {"command": "continue"}))
+                self.assertEqual(code, 0)
+                if command == "add":
+                    self.assert_commands(LIST_TABLE, [NFT, "-f", "-"], ADD_ELEMENT)
+                else:
+                    self.assert_commands(LIST_TABLE)
+                    self.assertIn("table_absent=true", log)
+
+    def test_target_table_is_found_among_unrelated_tables(self):
+        self.nft_results(table_list(
+            {"family": "ip", "name": "mini_soc_ar"}, RUNTIME_TABLE,
+            {"family": "inet", "name": "unrelated"},
+        ), result())
+        code, _, log = self.invoke(lines(event("delete")))
+        self.assertEqual(code, 0)
+        self.assert_commands(LIST_TABLE, DELETE_ELEMENT)
+        self.assertNotIn("table_absent=true", log)
+
+    def test_empty_valid_inventory_confirms_absence(self):
+        self.nft_results(result(stdout='{"nftables": []}'))
+        code, _, log = self.invoke(lines(event("delete")))
+        self.assertEqual(code, 0)
+        self.assert_commands(LIST_TABLE)
+        self.assertIn("table_absent=true", log)
 
 
 class HarnessTests(unittest.TestCase):
