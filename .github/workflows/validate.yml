@@ -29,7 +29,10 @@ jobs:
       - name: Install validation dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends shellcheck openssh-server suricata
+          sudo apt-get install -y --no-install-recommends shellcheck openssh-server suricata nftables
+
+      - name: Test Active Response with isolated nftables
+        run: sudo unshare --net -- python3 tests/integration/active_response_nft.py
 
       - name: Validate Bash syntax
         run: |

@@ -35,8 +35,40 @@ def run_nft(args, *, check=True):
     )
 
 
+def runtime_table_exists():
+    """Confirm absence only after a successful, structurally valid inventory."""
+    result = run_nft(["-j", "list", "tables"], check=False)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or "no diagnostic output"
+        raise RuntimeError(f"nft table query failed (exit {result.returncode}): {detail}")
+
+    inventory = json.loads(result.stdout)
+    if not isinstance(inventory, dict) or not isinstance(inventory.get("nftables"), list):
+        raise ValueError("invalid nftables table inventory")
+
+    found = False
+    for item in inventory["nftables"]:
+        if not isinstance(item, dict):
+            raise ValueError("invalid nftables inventory entry")
+        if set(item) == {"metainfo"} and isinstance(item["metainfo"], dict):
+            continue
+        table = item.get("table")
+        if (
+            set(item) != {"table"}
+            or not isinstance(table, dict)
+            or not isinstance(table.get("family"), str)
+            or not table["family"]
+            or not isinstance(table.get("name"), str)
+            or not table["name"]
+        ):
+            raise ValueError("invalid nftables table entry")
+        if table["family"] == "inet" and table["name"] == TABLE:
+            found = True
+    return found
+
+
 def ensure_runtime_table():
-    if run_nft(["list", "table", "inet", TABLE], check=False).returncode == 0:
+    if runtime_table_exists():
         return
     rules = f"""table inet {TABLE} {{
     set {SET} {{
@@ -97,7 +129,7 @@ def add(source):
 
 
 def delete(source):
-    if run_nft(["list", "table", "inet", TABLE], check=False).returncode != 0:
+    if not runtime_table_exists():
         log(f"DELETE source={source} table_absent=true")
         return
     result = run_nft(
