@@ -20,6 +20,8 @@ evidence/raw/
 *.log
 
 # Local tool/editor state
+__pycache__/
+*.py[cod]
 .vscode/
 .idea/
 .DS_Store

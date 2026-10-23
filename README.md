@@ -5,7 +5,7 @@ Mini SOC / Blue Team lab con Wazuh, Suricata, YARA, VirusTotal y nftables.
 ## Recorrido breve para evaluar mi perfil SOC L1
 
 **Dante Gabriel Balbuena Atar · Técnico Universitario en Ciberseguridad (UGR, graduado en 2026).**
-Busco mi primera oportunidad en SOC Nivel 1. Disponibilidad para viajar y relocalizarme en CABA; residencia actual en Tucumán.
+Busco mi primera oportunidad en SOC Nivel 1. Disponibilidad para trabajo remoto y para relocalizarme en CABA para modalidad híbrida; residencia actual en Tucumán.
 
 La práctica actual se centra en analizar alertas y documentar decisiones. El laboratorio permite revisar el flujo completo, pero no equivale a experiencia SOC productiva.
 
@@ -95,6 +95,17 @@ objetivo → riesgo → cambio mínimo → validación → UAT → evidencia →
 ```
 
 Cada incremento busca tener rollback explícito y evitar cambios oportunistas fuera de alcance.
+
+## Pruebas automatizadas de Active Response
+
+Los scripts Python de CHG-021 cuentan con pruebas de entrada, allowlist, protocolo `check_keys`, alta/retiro del bloqueo y errores de ejecución. Se ejecutan sin privilegios, Wazuh ni nftables reales:
+
+```bash
+python3 -m compileall -q scripts tests
+python3 -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+GitHub Actions ejecuta estas comprobaciones junto con las validaciones existentes. El [alcance de las pruebas](docs/active-response-testing.md) distingue las comprobaciones aisladas del código del UAT de red documentado en las VMs.
 
 ## Estado actual
 
