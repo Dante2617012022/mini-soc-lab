@@ -21,7 +21,7 @@ Se conserva como evidencia pública el código, la suite y la ejecución CI del 
 ## Estado de aceptación
 
 - Corrección y 27 pruebas unitarias: completadas localmente; sintaxis Python y revisión de espacios aprobadas.
-- GitHub Actions: pendiente para el commit final.
+- GitHub Actions: [Lab validation](https://github.com/Dante2617012022/mini-soc-lab/actions/runs/39897897788) aprobado para `1dbc79b96493fa163cc288ebba09707d8d3601da`, incluidas las 27 pruebas unitarias, la integración con nftables real v1.0.9 y todos los controles existentes.
 - UAT de la versión corregida en `SOC-GW-01`: pendiente; no hay conexión directa disponible a las VMs desde esta sesión.
 - Integración en `main`: posterior al UAT, de acuerdo con [el flujo de cambios](change-control.md).
 
