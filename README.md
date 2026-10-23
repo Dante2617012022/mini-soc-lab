@@ -125,6 +125,8 @@ CHG-025 añadió SOC-DET-004 como detección independiente de anomalía de tasa 
 
 La documentación detallada de cada cambio vive en `docs/CHG-*.md` y la arquitectura implementada en `docs/ARCHITECTURE.md`. La v1 queda cerrada funcionalmente; mejoras posteriores deben responder a riesgo o a una necesidad de operación demostrable, no a agregar herramientas por cantidad.
 
+La revisión de [capacidad de campos JSON del manager](docs/wazuh/json-field-capacity.md) documenta una muestra de eventos EVE `stats` que supera el límite configurado, el ajuste propuesto y sus verificaciones pendientes.
+
 ## Riesgos residuales conocidos
 
 Este laboratorio no pretende ser un SOC de producción. Entre los temas deliberadamente pendientes están el hardening de exposición bridged, política de actualización de agentes, ownership de reglas nftables runtime/persistentes, revisión del enrollment Wazuh, retención/backup/HA y controles operativos propios de un servicio gestionado.
