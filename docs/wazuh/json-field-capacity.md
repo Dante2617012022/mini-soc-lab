@@ -86,7 +86,7 @@ printf 'Respaldo: %s\n' "$backup"
 staged=$(mktemp "${cfg}.new.XXXXXX")
 trap 'rm -f -- "$staged"' EXIT
 cp -p -- "$cfg" "$staged"
-printf '\n# Capacidad validada para EVE stats del laboratorio.\nanalysisd.decoder_order_size=512\n' >> "$staged"
+printf '\n# Capacidad para EVE stats del laboratorio.\nanalysisd.decoder_order_size=512\n' >> "$staged"
 mv -f -- "$staged" "$cfg"
 if ! /var/ossec/bin/wazuh-analysisd -t; then
     cp -p -- "$backup" "$cfg"
@@ -116,7 +116,66 @@ Conservar la ruta exacta del respaldo. Si la recuperación automática del servi
 5. Completar el UAT automático de [CHG-021](../CHG-021.md) con una única señal autorizada, `ADD`, contención, `DELETE` por timeout y recuperación. La ausencia de errores JSON no sustituye esa validación.
 6. Registrar resultados sanitizados, SHA del PR, versión de Wazuh y alcance de la muestra antes de integrar el cambio en main.
 
-**Estado:** propuesta preparada; reproducción sintética en Wazuh, instalación, UAT y consumo posterior pendientes. Las salidas de las VMs son aportadas por el operador: la sesión de asistencia no tiene acceso directo a ellas. La CI valida los controles existentes del repositorio; no ejecuta Wazuh Manager ni acredita este UAT.
+**Estado:** UAT aprobado el **2026-10-23** para la muestra y el escenario documentados a continuación. Las salidas de las VMs fueron aportadas por el operador: la sesión de asistencia no tiene acceso directo a ellas. La CI valida los controles existentes del repositorio; no ejecuta Wazuh Manager ni acredita por sí sola este UAT. Los controles del commit final y la integración se registran en el [PR #50](https://github.com/Dante2617012022/mini-soc-lab/pull/50).
+
+## Evidencia de aceptación — 2026-10-23
+
+Se aplicó la opción del commit `cfe6ebaca0e1646abf6bcf2ab1478e60b99e0aa3` en Wazuh Manager 4.14.8, mediante el archivo local y con respaldo conservado en la VM. Los [controles de esa revisión](https://github.com/Dante2617012022/mini-soc-lab/actions/runs/39905192477) habían pasado antes de la instalación. Las modificaciones posteriores de este registro no alteran el valor configurado.
+
+### Decodificación y conectividad
+
+El JSON sintético ocupa 4951 bytes y contiene 456 campos hoja: `event_type`, 454 campos numerados y el marcador final.
+
+| Comprobación | Antes: límite 256 | Después: límite 512 |
+| --- | --- | --- |
+| Decodificador | `json` | `json` |
+| Campos numerados extraídos | 255 de 454 | 454 de 454 |
+| Marcador final | Ausente | `json-fields-456` presente |
+| Retorno de logtest | 0 | 0 |
+| Texto del error de límite en la CLI | Ausente | Ausente |
+
+El resultado inicial reprodujo extracción incompleta pese al retorno cero y a la ausencia del mensaje de error en la CLI. El resultado posterior confirmó la extracción completa del evento sintético.
+
+A las 05:35:42 UTC se verificó una única asignación local `analysisd.decoder_order_size=512`, el listener TCP/1514 de `wazuh-remoted` y la prueba sintética completa. El manager había vuelto activo tras el reinicio, con `analysisd`, `remoted` y `execd` en ejecución. A las 05:35:58 UTC, SOC-GW-01 figuraba `connected`, con keepalive y ACK de las 05:35:55 UTC.
+
+### Telemetría real durante 65 segundos
+
+Las lecturas del gateway se tomaron entre 05:43:56 y 05:45:01 UTC. Los contadores conservaban el mismo inicio de acumulación y su marca de actualización avanzó de 05:43:38 a 05:44:38 UTC.
+
+| Comprobación | Inicio | Fin |
+| --- | ---: | ---: |
+| Eventos EVE recogidos | 318 | 325 |
+| Bytes EVE recogidos | 2480926 | 2536198 |
+| Descartes al destino `agent` | 0 | 0 |
+| Último evento `stats`, hora UTC | 05:43:52 | 05:44:56 |
+| Campos estimados en ese `stats` | 456 | 456 |
+
+Se recogieron 7 eventos adicionales y 55272 bytes. El agente continuó conectado, con ACK de 05:44:55 UTC. A las 05:45:27 UTC, el manager seguía activo y el archivo de log consultado contenía **cero errores nuevos de capacidad desde 05:35:42 UTC**, una ventana de 9 minutos y 45 segundos que cubre la observación del gateway. `wazuh-remoted.state` mostraba cola vacía, `evt_count=145` y `discarded_count=0`.
+
+Los contadores del manager son agregados: no identifican individualmente todos los eventos EVE. Esta evidencia acredita producción y recogida de estadísticas nuevas, conexión activa y ausencia del error observado durante la ventana. No se activó archivado global ni debug permanente para forzar visibilidad de eventos de nivel 0.
+
+### Recursos
+
+| Momento | `MemoryCurrent`, bytes | Memoria disponible de la VM |
+| --- | ---: | --- |
+| Antes del reinicio | 4863549440 | 5,1 GiB |
+| 05:35:42 UTC | 862601216 | 5,3 GiB |
+| 05:45:27 UTC | 4945412096 | No capturada en esa lectura |
+
+A las 05:55:42 UTC, la VM tenía 5,0 GiB disponibles de 7,8 GiB totales y 1,3 MiB de swap usada. El desglose del cgroup del manager fue `anon=571310080`, `file=4270223360`, `kernel=155549696` y `slab=146001080` bytes. Predominó memoria de archivos/caché; `slab` forma parte de `kernel` y no debe sumarse otra vez. Los contadores `low`, `high`, `max`, `oom`, `oom_kill` y `oom_group_kill` fueron cero.
+
+No se observó presión de memoria en esta muestra. Las lecturas separadas por el reinicio no permiten atribuir al ajuste la caída inicial ni el aumento posterior de `MemoryCurrent`; tampoco acreditan capacidad sostenida de producción.
+
+### Regresión de detección y respuesta
+
+El ensayo automático de la corrección independiente [#49](https://github.com/Dante2617012022/mini-soc-lab/pull/49) se completó después del ajuste JSON, con el script de la revisión `3a0dda469b01192b03eaf83d237a27ed34210a8c`.
+
+- Un único disparo autorizado generó la alerta central a las **05:54:51.734 UTC**: agente `002`, regla Wazuh `100021`, firma Suricata `1000001` y fuente `10.77.0.10`.
+- Se registró `ADD` a las 05:54:51 UTC y `DELETE` a las 05:55:52 UTC: 61 segundos, compatibles con el timeout configurado de 60 segundos.
+- SOC-TEST-01 pasó de 3/3 respuestas a 0/3 durante la contención y volvió a 3/3 a las 05:56:05 UTC. El bloque de prueba no llamó al harness manual.
+- A las 06:01:59 UTC, el set estaba vacío, el agente continuaba conectado con ACK de 06:01:38 UTC, los servicios `wazuh-agent`, `suricata` y `nftables` estaban activos y `net.ipv4.ip_forward=1`.
+
+La correlación central y los estados observados cierran la regresión de detección, respuesta y recuperación para este escenario. La muestra inicial de estadísticas y esta alerta controlada son evidencias distintas; no se generaliza el resultado a todas las reglas o tipos de eventos.
 
 ## Rollback
 
@@ -130,3 +189,5 @@ El revert en Git no restaura por sí solo la configuración de la VM. No borrar 
 - [Wazuh 4.14.8: límite predeterminado](https://github.com/wazuh/wazuh/blob/v4.14.8/etc/internal_options.conf).
 - [Wazuh 4.14.8: extracción de campos JSON](https://github.com/wazuh/wazuh/blob/v4.14.8/src/analysisd/decoders/plugins/json_decoder.c).
 - [Wazuh: pruebas de reglas y decodificadores](https://documentation.wazuh.com/current/user-manual/ruleset/testing.html).
+- [Wazuh: estadísticas del collector](https://documentation.wazuh.com/current/user-manual/reference/statistics-files/wazuh-logcollector-state.html).
+- [Linux: contabilidad de memoria en cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html#memory).

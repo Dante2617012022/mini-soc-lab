@@ -125,7 +125,7 @@ CHG-025 añadió SOC-DET-004 como detección independiente de anomalía de tasa 
 
 La documentación detallada de cada cambio vive en `docs/CHG-*.md` y la arquitectura implementada en `docs/ARCHITECTURE.md`. La v1 queda cerrada funcionalmente; mejoras posteriores deben responder a riesgo o a una necesidad de operación demostrable, no a agregar herramientas por cantidad.
 
-La revisión de [capacidad de campos JSON del manager](docs/wazuh/json-field-capacity.md) documenta una muestra de eventos EVE `stats` que supera el límite configurado, el ajuste propuesto y sus verificaciones pendientes.
+La revisión de [capacidad de campos JSON del manager](docs/wazuh/json-field-capacity.md) reproduce el truncamiento con el límite anterior de 256 campos y documenta el ajuste a 512 validado el 2026-10-23: extracción sintética completa, estadísticas EVE nuevas recogidas sin nuevos errores de capacidad en la ventana observada, revisión de recursos y regresión automática de detección, contención y recuperación.
 
 ## Riesgos residuales conocidos
 
