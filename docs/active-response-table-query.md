@@ -14,35 +14,62 @@ El riesgo abordado es informar un retiro exitoso sin haber podido verificar el e
 
 La prueba de regresión falló con el script anterior en `add` (intentaba crear la tabla después del error) y `delete` (devolvía código 0). Con la corrección pasan las 27 pruebas unitarias. La suite cubre tabla presente, ausencia confirmada, coincidencia exacta de nombre/familia, JSON inválido o incompleto y comportamiento `add/delete` existente.
 
-CI incorpora además una prueba con nftables real en un namespace descartable. Comprueba el set después de altas/retiros, repeticiones y denegaciones reales de `CAP_NET_ADMIN`. El entorno local de esta sesión no permite crear el namespace; su resultado se obtiene en GitHub Actions y debe repetirse en Debian antes del despliegue.
+CI incorpora además una prueba con nftables real en un namespace descartable. Comprueba el set después de altas/retiros, repeticiones y denegaciones reales de `CAP_NET_ADMIN`. El entorno local de esta sesión no permite crear el namespace; la prueba pasó en GitHub Actions y el operador la repitió correctamente en Debian antes del despliegue.
 
 Se conserva como evidencia pública el código, la suite y la ejecución CI del commit. Cualquier evidencia de las VMs se publica únicamente después de sanitizarla. La validación automatizada no acredita por sí sola conectividad, salud de Wazuh ni timeout real.
 
 ## Estado de aceptación
 
 - Corrección y 27 pruebas unitarias: completadas localmente; sintaxis Python y revisión de espacios aprobadas.
-- GitHub Actions: [Lab validation](https://github.com/Dante2617012022/mini-soc-lab/actions/runs/39897897788) aprobado para `1dbc79b96493fa163cc288ebba09707d8d3601da`, incluidas las 27 pruebas unitarias, la integración con nftables real v1.0.9 y todos los controles existentes.
-- UAT de la versión corregida en `SOC-GW-01`: pendiente; no hay conexión directa disponible a las VMs desde esta sesión.
-- Integración en `main`: posterior al UAT, de acuerdo con [el flujo de cambios](change-control.md).
+- GitHub Actions de la versión ensayada: [Lab validation](https://github.com/Dante2617012022/mini-soc-lab/actions/runs/39898079455) aprobado para `3a0dda469b01192b03eaf83d237a27ed34210a8c`, incluidas las 27 pruebas unitarias, la integración con nftables real v1.0.9 y todos los controles existentes.
+- UAT de la versión corregida: aprobado el **2026-10-23**, con evidencia de consola aportada por el operador. La sesión de asistencia no tiene conexión directa a las VMs.
+- Los controles del commit final y la integración se registran en el [PR #49](https://github.com/Dante2617012022/mini-soc-lab/pull/49), siguiendo [el flujo de cambios](change-control.md). Las actualizaciones de este registro no cambian el script ensayado.
+
+## Evidencia del UAT de la corrección — 2026-10-23
+
+Se ensayó `3a0dda469b01192b03eaf83d237a27ed34210a8c` en SOC-GW-01 con Debian 13, Python 3.13.5 y nftables 1.1.3. Pasaron las 27 pruebas unitarias y la integración real en namespace descartable, incluidas denegaciones de permisos en `add/delete`. Después se instaló únicamente el script, con respaldo local, propietario/grupo `root:wazuh` y modo `750`.
+
+El archivo fuente y el instalado tuvieron el mismo SHA-256: `3308c834260a4460cee910515e33aa21cecaa340002de1e2eee1aaa979506170`.
+
+El UAT manual confirmó conectividad inicial 3/3, alta limitada a la fuente autorizada, contención 0/3, retiro con set vacío y recuperación 3/3. Los registros fueron `ADD` a las 01:37:26-03:00 y `DELETE` a las 01:39:05-03:00. Ese retiro manual no acredita el timeout.
+
+Antes del ensayo automático se recuperó la conexión del agente y se resolvió, en el cambio independiente [#50](https://github.com/Dante2617012022/mini-soc-lab/pull/50), el límite de campos JSON observado en estadísticas EVE. La desconexión había coincidido con un reinicio del manager; no se atribuye ese reinicio al error JSON ni a esta corrección.
+
+El ensayo automático utilizó un único ICMP autorizado desde SOC-TEST-01 hacia el gateway. Las horas siguientes están normalizadas a UTC; el gateway y el equipo de prueba mostraban UTC-03:00.
+
+| Momento UTC | Evidencia observada |
+| --- | --- |
+| Antes del disparo | Conectividad de SOC-TEST-01: 3 enviados / 3 recibidos |
+| 05:54:51 | Disparo único y registro `ADD source=10.77.0.10` |
+| 05:54:51.734 | Alerta central: agente `002`, regla `100021`, firma Suricata `1000001`, fuente autorizada `10.77.0.10` |
+| 05:54:56 | Prueba durante la contención: 3 enviados / 0 recibidos |
+| 05:55:02 | El set contenía únicamente `10.77.0.10`; agente conectado, servicios activos e IP forwarding habilitado |
+| 05:55:52 | Registro `DELETE source=10.77.0.10`, 61 segundos después del alta, compatible con el timeout configurado de 60 segundos |
+| 05:56:05 | Recuperación: 3 enviados / 3 recibidos |
+| 06:01:59 | Set vacío; agente `connected`, keepalive/ACK de 06:01:38; `wazuh-agent`, `suricata` y `nftables` activos; `net.ipv4.ip_forward=1` |
+
+El bloque ejecutado para el ensayo automático sólo generó el disparo y comprobó conectividad; no invocó el harness manual. La evidencia conjunta acredita detección, contención y retiro temporizado para esta ejecución controlada. No constituye una prueba de carga, disponibilidad prolongada ni capacidad de producción. Disposición: **True Positive — Authorized Security Test / Benign**.
 
 ## UAT en SOC-GW-01
 
-Ejecutar desde la consola de la VM del gateway durante una ventana de laboratorio, sin generar simultáneamente eventos de Active Response. Primero verificar `hostname`, `python3 --version` y `sudo /usr/sbin/nft --version`. Se necesita git para obtener la rama; `nftables`, Python 3 y `util-linux` para la prueba aislada.
+Ejecutar desde la consola de la VM del gateway durante una ventana de laboratorio, sin generar simultáneamente eventos de Active Response. Primero verificar `hostname`, `python3 --version` y `sudo /usr/sbin/nft --version`. Se necesita git para obtener la revisión; `nftables`, Python 3 y `util-linux` para la prueba aislada. Los ejemplos usan `sudo`; en una sesión ya iniciada como `root`, omitir ese prefijo.
 
 ### 1. Obtener la versión y comprobarla sin desplegar
 
 Usar un directorio nuevo para conservar cualquier copia existente del proyecto:
 
 ```bash
-git clone --single-branch --branch fix/active-response-table-query https://github.com/Dante2617012022/mini-soc-lab.git mini-soc-ar-uat
+git clone https://github.com/Dante2617012022/mini-soc-lab.git mini-soc-ar-uat
 cd mini-soc-ar-uat
+git fetch origin 3a0dda469b01192b03eaf83d237a27ed34210a8c
+git checkout --detach 3a0dda469b01192b03eaf83d237a27ed34210a8c
 git rev-parse HEAD
 python3 -m compileall -q scripts tests
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 sudo unshare --net -- python3 tests/integration/active_response_nft.py
 ```
 
-Comprobar que el SHA coincide con el head aprobado del PR. Todos los comandos deben terminar correctamente antes de avanzar. La prueba aislada no instala el script en Wazuh ni modifica la tabla de la VM.
+Este ejemplo reproduce la revisión ensayada y aprobada en CI. Para una revisión posterior, verificar su SHA y sus controles antes de sustituirlo. Todos los comandos deben terminar correctamente antes de avanzar. La prueba aislada no instala el script en Wazuh ni modifica la tabla de la VM.
 
 ### 2. Conservar el estado e instalar sólo el script corregido
 
